@@ -23,7 +23,7 @@ for table in alphabetProgramTables:
 # A few subject areas all link to the same page. Notably, these include those offered by colleges such as Trinity, University, etc. which all link to the respective college's page. Thus, we scrape some courses multiple times. This is to prevent such duplicates.
 coursesAlreadySeen = {}
 
-for link in subjectAreaLinks[:5]:
+for link in subjectAreaLinks:
     driver.get(link)
 
     # This xpath always leads to the elements which contain the names of the courses.
@@ -35,3 +35,6 @@ for link in subjectAreaLinks[:5]:
         if courseID not in coursesAlreadySeen:
             coursesAlreadySeen[courseID] = True
             print(courseID)
+
+driver.close()
+driver.quit()
