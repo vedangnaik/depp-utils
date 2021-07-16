@@ -7,6 +7,7 @@ import re
 import argparse
 from pathlib import Path
 
+# Set up argument parsing
 parser = argparse.ArgumentParser(description='Scrapes course and program IDs from https://artsci.calendar.utoronto.ca/listing-program-subject-areas.')
 parser.add_argument('chromedriver_path', type=Path, help="path to a valid chromedriver executable")
 parser.add_argument('course_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs")
@@ -71,6 +72,7 @@ print(f"Examined {len(subjectAreaLinks)} subject areas and scraped:")
 print(f"\t{len(coursesSeen)} courses")
 print(f"\t{len(programsSeen)} programs")
 
+# Close stuff
 args.course_ids_file.close()
 args.program_ids_file.close()
 driver.close()
