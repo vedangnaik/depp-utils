@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import sys
@@ -6,16 +8,16 @@ import argparse
 from pathlib import Path
 
 parser = argparse.ArgumentParser(description='Scrapes course and program IDs from https://artsci.calendar.utoronto.ca/listing-program-subject-areas.')
-parser.add_argument('--chromedriver', dest='chromedriver_path', type=Path, metavar='p', required=True, help="path to a valid chromedriver executable")
-parser.add_argument('--course-ids-file', dest='course_ids_file', type=argparse.FileType('w'), metavar='p', required=True, help="path to ASCII file to store scraped course IDs")
-parser.add_argument('--program-ids-file', dest='program_ids_file', type=argparse.FileType('w'), metavar='p', required=True, help="path to ASCII file to store scraped program IDs")
+parser.add_argument('chromedriver_path', type=Path, help="path to a valid chromedriver executable")
+parser.add_argument('course_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs")
+parser.add_argument('program_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped program IDs")
 args = parser.parse_args()
 
 # Set up the driver - driver path is passed in via sys.argv[1]
 options = Options()
 options.add_argument('--headless')
 options.add_argument('--window-size=1920x1080')
-driver = webdriver.Chrome(executable_path=args.chromedriver_path, chrome_options=options)
+driver = webdriver.Chrome(executable_path=args.chromedriver_path, options=options)
 driver.get("https://artsci.calendar.utoronto.ca/listing-program-subject-areas")
 
 # Get the div containing all the tables.
