@@ -49,18 +49,25 @@ resetProgramsPOSTHeader = {
     "Cookie": ""
 }
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python download_programs_from_de.py cookie")
-        print("Pass in program IDs via stdin.")
-        sys.exit(1);
+# Set up argument parsing
+parser = argparse.ArgumentParser(description='Downloads program JSON objects from https://degreeexplorer.utoronto.ca/.')
+parser.add_argument('cookie', type=str, help="cookie from a valid Degree Explorer session. To obtain this, log into DE with your UofT credentials, then copy the cookie from the Network tab of Chrome Devtools")
+parser.add_argument('--p_jsons_dir', type=str, help="path to directory to store downloaded program JSONs", default="./program_data", metavar='dir')
 
-    addProgramPOSTHeader["Cookie"] = sys.argv[1]
-    resetProgramsPOSTHeader["Cookie"] = sys.argv[1]
+if __name__ == "__main__":
+    args = parser.parse_args()
+
+    # If a directory is indicated, created it if it doesn't exist
+    if args.p_jsons_dir:
+        Path(args.p_jsons_dir).mkdir(exist_ok=True, parents=True)
+
+    # Load the cookies into the headers
+    addProgramPOSTHeader["Cookie"] = args.cookie
+    resetProgramsPOSTHeader["Cookie"] = args.cookie
 
     attempted = 0
-    skipped = []
     successes = 0
+    skipped = []
     failures = []
 
     pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
@@ -72,12 +79,12 @@ if __name__ == "__main__":
         attempted += 1
 
         # Skip the program if we've already scraped it
-        f = Path("program_data/" + programID + ".json")
+        f = Path(f"{args.p_jsons_dir}/{programID}.json")
         if f.is_file():
             skipped.append(programID)
             continue
 
-        # We are not, reset the courses
+        # Reset if we've finished all the programs from this subject area
         if (studyAreaNum != currentStudyArea):
             r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/resetPrograms?tabIndex=0", headers=resetProgramsPOSTHeader)
             if (r.status_code != 200):
@@ -86,28 +93,28 @@ if __name__ == "__main__":
             print(f"Reseting programs for number {currentStudyArea}, moving to {studyAreaNum}")
             currentStudyArea = studyAreaNum
 
-        # Add the course, hopefully it doesn't fail due to an un-added prereq program
+        # Add the program, hopefully it doesn't fail due to an un-added prereq program
         r = requests.post(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveProgramEntry?tabIndex=0&newPostCode={programID}", headers=addProgramPOSTHeader)
         if (r.status_code != 200):
             failures.append(programID)
             continue
 
-        # Go through each program obj to only extract the one we added. Yeah, don't ask why it's this way.
+        # Go through each program obj to only extract the one we added. 
+        # Yeah, don't ask why it's this way.
         for programDataObj in r.json()["timelineStatus"]["allPostAssessments"]:
             if programDataObj["postCode"] == programID:
                 # Save the program info to file after extracting it from the morass
-                with open("program_data/" + programID + ".json", 'w', encoding='utf-8') as f:
+                with open(f"{args.p_jsons_dir}/{programID}.json", 'w') as f:
                     json.dump(programDataObj, f, ensure_ascii=False, indent=2)
-                successes += 1   
+                successes += 1
                 break;
 
     # Reset the courses to clean up
     r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/resetPrograms?tabIndex=0", headers=resetProgramsPOSTHeader)
 
-    print(f"Attempted to download {attempted} courses from DE as passed in via stdin.")
-    print(f"Succeeded in downloading {successes} courses.")
-    print(f"Skipped {len(skipped)} courses because they have already been scraped.")
-    print(f"Failed to download {len(failures)} courses. Failed courses: ")
-    print(failures)
-
-    sys.exit(0);
+    # Print diagnostics
+    print("Finished.")
+    print(f"Attempted to download {attempted} programs from Degree Explorer:")
+    print(f"\tSucceeded in downloading {successes} programs")
+    print(f"\tSkipped {len(skipped)} programs because they have already been scraped. Skipped programs: {skipped}")
+    print(f"\tFailed to download {len(failures)} programs. Failed programs: {failures}")

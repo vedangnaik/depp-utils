@@ -96,6 +96,6 @@ if __name__ == "__main__":
     # Print diagnostics
     print("Finished.")
     print(f"Attempted to download {attempted} courses from Degree Explorer:")
-    print(f"\tSucceeded in downloading {successes} courses.")
+    print(f"\tSucceeded in downloading {successes} courses")
     print(f"\tSkipped {len(skipped)} courses because they have already been scraped. Skipped courses: {skipped}")
     print(f"\tFailed to download {len(failures)} courses. Failed courses: {failures}")
