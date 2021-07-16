@@ -10,9 +10,8 @@ from pathlib import Path
 # Set up argument parsing
 parser = argparse.ArgumentParser(description='Scrapes course and program IDs from https://artsci.calendar.utoronto.ca/listing-program-subject-areas.')
 parser.add_argument('chromedriver_path', type=Path, help="path to a valid chromedriver executable")
-parser.add_argument('course_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs")
-parser.add_argument('program_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped program IDs")
-args = parser.parse_args()
+parser.add_argument('--c_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs", default="course-ids.txt", metavar='file')
+parser.add_argument('--p_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped program IDs", default="program-ids.txt", metavar='file')
 
 # Chromedriver options
 options = Options()
@@ -20,6 +19,8 @@ options.add_argument('--headless')
 options.add_argument('--window-size=1920x1080')
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+
     # Set up the driver
     driver = webdriver.Chrome(executable_path=args.chromedriver_path, options=options)
     driver.get("https://artsci.calendar.utoronto.ca/listing-program-subject-areas")
@@ -56,7 +57,7 @@ if __name__ == "__main__":
             courseID = p.get_attribute('innerText')[1:9]
             if cRegex.match(courseID) and courseID not in coursesSeen:
                 coursesSeen.append(courseID)
-                args.course_ids_file.write(courseID + "\n")
+                args.c_ids_file.write(courseID + "\n")
             else:
                 print(f"Course {courseID} is a duplicate or failed the course ID regex.", file=sys.stderr)
 
@@ -65,7 +66,7 @@ if __name__ == "__main__":
             programID = p.get_attribute('innerText').split("-")[-1][1:]
             if pRegex.match(programID) and programID not in programsSeen:
                 programsSeen.append(programID)
-                args.program_ids_file.write(programID + "\n")
+                args.p_ids_file.write(programID + "\n")
             else:
                 print(f"Program {programID} is a duplicate or failed the program ID regex.", file=sys.stderr)
 
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     print(f"\t{len(programsSeen)} programs")
 
     # Close stuff
-    args.course_ids_file.close()
-    args.program_ids_file.close()
+    args.c_ids_file.close()
+    args.p_ids_file.close()
     driver.close()
     driver.quit()

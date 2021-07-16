@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import requests
 from pathlib import Path
 import json
-import fileinput
+import argparse
 import sys
 
-courseInfoGETHeader = {
+getCourseInfoGETHeader = {
     "Host": "degreeexplorer.utoronto.ca",
     "Connection": "keep-alive",
     "sec-ch-ua": '" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"',
@@ -18,10 +20,10 @@ courseInfoGETHeader = {
     "Referer": "https://degreeexplorer.utoronto.ca/degreeExplorer/planner",
     "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
-    "Cookie": "" # Passed in by user for that session
+    "Cookie": ""
 }
 
-courseAddPOSTHeader = {
+addCoursePOSTHeader = {
     "Host": "degreeexplorer.utoronto.ca",
     "Connection": "keep-alive",
     "Content-Length": "0",
@@ -42,78 +44,58 @@ courseAddPOSTHeader = {
     "Cookie": ""
 }
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python download_courses_from_de.py rowNum colNum cookie")
-        print("Pass in course IDs via stdin.")
+# Set up argument parsing
+parser = argparse.ArgumentParser(description='Downloads course JSON objects from https://degreeexplorer.utoronto.ca/.')
+parser.add_argument('cookie', type=str, help="cookie from a valid Degree Explorer session. To obtain this, log into DE with your UofT credentials, then copy the cookie from the Network tab of Chrome Devtools")
+parser.add_argument('row_num', type=int, help="row num of DE timetable into which to add courses before download")
+parser.add_argument('col_num', type=int, help="col num of DE timetable into which to add courses before download")
+parser.add_argument('--c_jsons_dir', type=str, help="path to directory to store downloaded course JSONs", default="./course_data", metavar='dir')
 
-    courseAddPOSTHeader["Cookie"] = sys.argv[3]
-    courseInfoGETHeader["Cookie"] = sys.argv[3]
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+
+    # If a directory is indicated, created it if it doesn't exist
+    if args.c_jsons_dir:
+        Path(args.c_jsons_dir).mkdir(exist_ok=True, parents=True)
+
+    # Load the cookies into the headers
+    addCoursePOSTHeader["Cookie"] = args.cookie
+    getCourseInfoGETHeader["Cookie"] = args.cookie
 
     attempted = 0
-    skipped = []
     successes = 0
+    skipped = []
     failures = []
 
     for line in sys.stdin:
         courseID = line.strip()
         attempted += 1
 
-        f = Path("course_data/" + courseID + ".json")
+        f = Path(f"{args.c_jsons_dir}/{courseID}.json")
         if f.is_file():
             skipped.append(courseID)
             continue
 
-        r = requests.post(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveCourseEntry?tabIndex=1&selRowIndex={sys.argv[1]}&selColIndex={sys.argv[2]}&newCourseCode={courseID}", headers=courseAddPOSTHeader)
+        # Add the course, then get it's info. Equivalent to adding it by hovering+typing, then seeing the information by clicking on the tile.
+        r = requests.post(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveCourseEntry?tabIndex=1&selRowIndex={args.row_num}&selColIndex={args.col_num}&newCourseCode={courseID}", headers=addCoursePOSTHeader)
         if (r.status_code != 200):
             failures.append(courseID)
             continue
         
-        r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/getCellDetails?tabIndex=1&rowIndex={sys.argv[1]}&colIndex={sys.argv[2]}", headers=courseInfoGETHeader)
+        r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/getCellDetails?tabIndex=1&rowIndex={args.row_num}&colIndex={args.col_num}", headers=getCourseInfoGETHeader)
         if (r.status_code != 200):
             failures.append(courseID)
             continue
 
-        with open("course_data/" + courseID + ".json", 'w', encoding='utf-8') as f:
+        with open(f"{args.c_jsons_dir}/{courseID}.json", 'w') as f:
             json.dump(r.json(), f, ensure_ascii=False, indent=2)
         print(f"Downloaded data for {courseID}")
         successes += 1
 
-    print(f"Attempted to download {attempted} courses from DE as passed in via stdin.")
-    print(f"Succeeded in downloading {successes} courses.")
-    print(f"Skipped {len(skipped)} courses because they have already been scraped.")
-    print(f"Failed to download {len(failures)} courses. Failed courses: ")
-    print(failures)
-
-
-
-
-
-# programInfoPOSTHeader = {
-#     "Accept": "application/json, text/plain, */*",
-#     "Accept-Encoding": "gzip, deflate, br",
-#     "Accept-Language": "en-US,en;q=0.9",
-#     "Connection": "keep-alive",
-#     "Content-Length": "0",
-#     "Content-Type": "text/plain",
-#     "DNT": "1",
-#     "Host": "degreeexplorer.utoronto.ca",
-#     "Origin": "https://degreeexplorer.utoronto.ca",
-#     "Referer": "https://degreeexplorer.utoronto.ca/degreeExplorer/planner",
-#     "sec-ch-ua": '" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"',
-#     "sec-ch-ua-mobile": "?0",
-#     "Sec-Fetch-Dest": "empty",
-#     "Sec-Fetch-Mode": "cors",
-#     "Sec-Fetch-Site": "same-origin",
-#     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-#     "X-XSRF-TOKEN": "Vcs464vTo6UCHRjbIlLx8rMMBd8V8NIxVkLGnZGA5lU=",
-#     "Cookie": ""
-# }
-
-# programInfoPOSTHeader["Cookie"] = cookie
-
-# for programID in programs:
-#     r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveProgramEntry?tabIndex=0&newPostCode=" + programID, headers=programInfoPOSTHeader)
-#     if (r.status_code != 200):
-#         print("Failed")
-#     print(r.text)
+    # Print diagnostics
+    print("Finished.")
+    print(f"Attempted to download {attempted} courses from Degree Explorer:")
+    print(f"\tSucceeded in downloading {successes} courses.")
+    print(f"\tSkipped {len(skipped)} courses because they have already been scraped. Skipped courses: {skipped}")
+    print(f"\tFailed to download {len(failures)} courses. Failed courses: {failures}")
