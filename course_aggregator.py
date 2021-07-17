@@ -6,9 +6,9 @@ import argparse
 from pathlib import Path
 
 # Set up argument parsing
-parser = argparse.ArgumentParser(description='Downloads course JSON objects from https://degreeexplorer.utoronto.ca/.')
+parser = argparse.ArgumentParser(description='Aggregates and cleans course JSON objects downloaded from https://degreeexplorer.utoronto.ca/.')
 parser.add_argument('--c_jsons_dir', type=str, help="path to directory to read downloaded course JSONs from. default: ./course_data", default="./course_data", metavar='dir')
-parser.add_argument('--c_aggr_file', type=argparse.FileType('w'), help="path to file to write aggregated courses into. default: ./aggregated_courses.json", default="./aggregated_courses.json")
+parser.add_argument('--c_aggr_file', type=argparse.FileType('w'), help="path to file to write aggregated courses into. default: ./aggregated_courses.json", default="./aggregated_courses.json", metavar='file')
 
 # Dict to hold final aggregated JSON obj
 aggregated_courses = {}
