@@ -10,8 +10,8 @@ from pathlib import Path
 # Set up argument parsing
 parser = argparse.ArgumentParser(description='Scrapes course and program IDs from https://artsci.calendar.utoronto.ca/listing-program-subject-areas.')
 parser.add_argument('chromedriver_path', type=Path, help="path to a valid chromedriver executable")
-parser.add_argument('--c_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs", default="course-ids.txt", metavar='file')
-parser.add_argument('--p_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped program IDs", default="program-ids.txt", metavar='file')
+parser.add_argument('--c_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped course IDs. default: ./course-ids.txt", default="./course-ids.txt", metavar='file')
+parser.add_argument('--p_ids_file', type=argparse.FileType('w'), help="path to ASCII file to store scraped program IDs. default: ./program-ids.txt", default="./program-ids.txt", metavar='file')
 
 # Chromedriver options
 options = Options()
@@ -73,8 +73,8 @@ if __name__ == "__main__":
     # Print some diagnostics
     print("Finished.")
     print(f"Examined {len(subjectAreaLinks)} subject areas and scraped:")
-    print(f"\t{len(coursesSeen)} courses")
-    print(f"\t{len(programsSeen)} programs")
+    print(f"\t{len(coursesSeen)} course(s)")
+    print(f"\t{len(programsSeen)} program(s)")
 
     # Close stuff
     args.c_ids_file.close()

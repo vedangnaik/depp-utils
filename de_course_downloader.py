@@ -49,11 +49,13 @@ parser = argparse.ArgumentParser(description='Downloads course JSON objects from
 parser.add_argument('cookie', type=str, help="cookie from a valid Degree Explorer session. To obtain this, log into DE with your UofT credentials, then copy the cookie from the Network tab of Chrome Devtools")
 parser.add_argument('row_num', type=int, help="row num of DE timetable into which to add courses before download")
 parser.add_argument('col_num', type=int, help="col num of DE timetable into which to add courses before download")
-parser.add_argument('--c_jsons_dir', type=str, help="path to directory to store downloaded course JSONs", default="./course_data", metavar='dir')
+parser.add_argument('--c_jsons_dir', type=str, help="path to directory to store downloaded course JSONs. default: ./course_data", default="./course_data", metavar='dir')
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    print("Starting course download...")
 
     # If a directory is indicated, created it if it doesn't exist
     if args.c_jsons_dir:
@@ -95,7 +97,7 @@ if __name__ == "__main__":
 
     # Print diagnostics
     print("Finished.")
-    print(f"Attempted to download {attempted} courses from Degree Explorer:")
-    print(f"\tSucceeded in downloading {successes} courses")
-    print(f"\tSkipped {len(skipped)} courses because they have already been scraped. Skipped courses: {skipped}")
-    print(f"\tFailed to download {len(failures)} courses. Failed courses: {failures}")
+    print(f"Attempted to download {attempted} course(s) from Degree Explorer:")
+    print(f"\tSucceeded in downloading {successes} course(s)")
+    print(f"\tSkipped {len(skipped)} course(s) because they have already been scraped. Skipped: {skipped}")
+    print(f"\tFailed to download {len(failures)} course(s). Failures: {failures}")

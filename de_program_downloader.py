@@ -52,10 +52,12 @@ resetProgramsPOSTHeader = {
 # Set up argument parsing
 parser = argparse.ArgumentParser(description='Downloads program JSON objects from https://degreeexplorer.utoronto.ca/.')
 parser.add_argument('cookie', type=str, help="cookie from a valid Degree Explorer session. To obtain this, log into DE with your UofT credentials, then copy the cookie from the Network tab of Chrome Devtools")
-parser.add_argument('--p_jsons_dir', type=str, help="path to directory to store downloaded program JSONs", default="./program_data", metavar='dir')
+parser.add_argument('--p_jsons_dir', type=str, help="path to directory to store downloaded program JSONs. default: ./program_data", default="./program_data", metavar='dir')
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    print("Starting program download...")
 
     # If a directory is indicated, created it if it doesn't exist
     if args.p_jsons_dir:
@@ -114,7 +116,7 @@ if __name__ == "__main__":
 
     # Print diagnostics
     print("Finished.")
-    print(f"Attempted to download {attempted} programs from Degree Explorer:")
-    print(f"\tSucceeded in downloading {successes} programs")
-    print(f"\tSkipped {len(skipped)} programs because they have already been scraped. Skipped programs: {skipped}")
-    print(f"\tFailed to download {len(failures)} programs. Failed programs: {failures}")
+    print(f"Attempted to download {attempted} program(s) from Degree Explorer:")
+    print(f"\tSucceeded in downloading {successes} program(s)")
+    print(f"\tSkipped {len(skipped)} program(s) because they have already been scraped. Skipped: {skipped}")
+    print(f"\tFailed to download {len(failures)} program(s). Failed: {failures}")
