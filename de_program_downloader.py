@@ -1,7 +1,7 @@
 import requests
 from pathlib import Path
 import json
-import fileinput
+import argparse
 import sys
 import re
 

@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
         # From the top level, remove everything except these two
         for key in list(courseObj.keys()):
-            if key != 'title' and key != 'prerequisites':
+            if key not in ['title', 'prerequisites']:
                 del courseObj[key];
 
         # For each prerequisite, assemble the description and remove unwanted stuff. Assemble into a dict instead of a array, with the key being the shortIdentifer minus the brackets
