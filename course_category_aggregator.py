@@ -5,19 +5,19 @@ import re
 
 topLevelCategoryMap = [
     # *1*/*A* = undergraduate course level constraint
-    (re.compile('^\*([0-9A-Z])\*$'), lambda category: "[A-Z]{{3}}{0}[0-9]{{2}}[HY]1".format(re.compile('^\*([0-9A-Z])\*$').match(category).group(1))),
+    (re.compile('^\*([0-9A-Z])\*$'), lambda category: "[A-Z][A-Z][A-Z]{0}[0-9][0-9][HY]1".format(re.compile('^\*([0-9A-Z])\*$').match(category).group(1))),
     # CSC* = undergraduate department level constraint
-    (re.compile('^([A-Z]{3})\*$'), lambda category: "{0}[0-9]{{3}}[HY]1".format(re.compile('^([A-Z]{3})\*$').match(category).group(1))),
+    (re.compile('^([A-Z][A-Z][A-Z])\*$'), lambda category: "{0}[0-9][0-9][0-9][HY]1".format(re.compile('^([A-Z][A-Z][A-Z])\*$').match(category).group(1))),
     # CSC1* = undergraduate department and course level constraint
-    (re.compile('^([A-Z]{3}[0-9A-Z])\*$'), lambda category: "{0}[0-9]{{2}}[HY]1".format(re.compile('^([A-Z]{3}[0-9A-Z])\*$').match(category).group(1))),
+    (re.compile('^([A-Z][A-Z][A-Z][0-9A-Z])\*$'), lambda category: "{0}[0-9][0-9][HY]1".format(re.compile('^([A-Z][A-Z][A-Z][0-9A-Z])\*$').match(category).group(1))),
     # PHL* (GR) = graduate department level constraint
-    (re.compile('^([A-Z]{3})\* \(GR\)$'), lambda category: "{0}[0-9]{{4}}[HY]".format(re.compile('^([A-Z]{3})\* \(GR\)$').match(category).group(1))),
+    (re.compile('^([A-Z][A-Z][A-Z])\* \(GR\)$'), lambda category: "{0}[0-9][0-9][0-9][0-9][HY]".format(re.compile('^([A-Z][A-Z][A-Z])\* \(GR\)$').match(category).group(1))),
     # * = Anything? TODO: figure out what this actually is
     (re.compile('^\*$'), lambda category: ".*"),
     # * (GR) = any graduate level course
-    (re.compile('^\* \(GR\)$'), lambda category: "[A-Z]{{3}}[0-9]{{4}}[HY]"),
+    (re.compile('^\* \(GR\)$'), lambda category: "[A-Z][A-Z][A-Z][0-9][0-9][0-9][0-9][HY]"),
     # CSC404H1 = specific undergraduate course code e.g. one of CSC404H1 or CSC236H1 or CSC324H1
-    (re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)'), lambda category: "{0}".format(re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)').match(category).group(1)))
+    (re.compile('^[A-Z][A-Z][A-Z][0-9][0-9][0-9][HY]1$'), lambda category: "{0}".format(re.compile('^[A-Z][A-Z][A-Z][0-9][0-9][0-9][HY]1$').match(category).group(0)))
 ]
 
 def parseTopLevelCategory(category):
@@ -81,9 +81,6 @@ if __name__ == "__main__":
 
     for ccFile in glob.glob(f"{args.cc_jsons_dir}/*.json"):
         attempted += 1
-
-        if not ccFile == "./course_category_data\AS-CSC4_ALL.json":
-            continue 
 
         # Read file into dict
         with open(ccFile) as f:
