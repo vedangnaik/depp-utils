@@ -22,20 +22,36 @@ getCategoryCourseGETHeader = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
 }
 
-# *1*/*A* = course level constraint
+test = [
+    # *1*/*A* = undergraduate course level constraint
+    (re.compile('^\*([0-9A-Z])\*$'), lambda category: "[A-Z]{{3}}{0}[0-9]{{2}}[HY]1".format(re.compile('^\*([0-9A-Z])\*$').match(category).group(1))),
+    # CSC* = undergraduate department level constraint
+    (re.compile('^([A-Z]{3})\*$'), lambda category: "{0}[0-9]{{3}}[HY]1".format(re.compile('^([A-Z]{3})\*$').match(category).group(1))),
+    # CSC1* = undergraduate department and course level constraint
+    (re.compile('^([A-Z]{3}[0-9A-Z])\*$'), lambda category: "{0}[0-9]{{2}}[HY]1".format(re.compile('^([A-Z]{3}[0-9A-Z])\*$').match(category).group(1))),
+    # PHL* (GR) = graduate department level constraint
+    (re.compile('^([A-Z]{3})\* \(GR\)$'), lambda category: "{0}[0-9]{{4}}[HY]".format(re.compile('^([A-Z]{3})\* \(GR\)$').match(category).group(1)))
+    # * = Anything? TODO: figure out what this actually is
+    (re.compile('^\*$'), lambda category: ".*"),
+    # * (GR) = any graduate level course
+    (re.compile('^\* \(GR\$'), lambda category: "[A-Z]{{3}}[0-9]{{4}}[HY]")
+]
+
+# *1*/*A* = undergraduate course level constraint
 # * (blah blah) = specific categoies like graduate, transfer, etc.
-# CSC* = department level constraint
-# CSC1 = department+course level constraint
+# CSC* = undergraduate department level constraint
+# CSC1* = undergraduate department and course level constraint
+# PHL* (GR) = graduate department level constraint
 def parseTopLevelCategory(category):
     courseLevelRegex = re.compile('^\*([0-9A-Z])\*$')
-    categoryRegex = re.compile('^\* \(.*\)$')
+    allGraduateCoursesRegex = re.compile('^\* \(GR\)$')
     departmentLevelRegex = re.compile('^([A-Z]{3})\*$')
     departmentAndCourseRegex = re.compile('^([A-Z]{3}[0-9A-Z])\*$')
 
     if courseLevelRegex.match(category):
         return f"[A-Z]{{3}}{courseLevelRegex.match(category).group(1)}[0-9]{{2}}[HY]1"
-    elif categoryRegex.match(category):
-        return "^\\b$";
+    elif allGraduateCoursesRegex.match(category):
+        return "[A-Z]{3}[0-9]{4}[HY]";
     elif departmentLevelRegex.match(category):
         return f"{departmentLevelRegex.match(category).group(1)}[0-9]{{3}}[HY]1"
     elif departmentAndCourseRegex.match(category):
@@ -73,13 +89,10 @@ def recursiveParseCourseCategory(courseCategory):
     for excludeCategory in categoryObj["excludeItems"]:
         categoryID = excludeCategory["code"]
         if excludeCategory["categoryEntity"]:
-            # If it's another non-top-level id, recursively parse it again
             excludes.append(recursiveParseCourseCategory(categoryID))
         elif excludeCategory["courseEntity"]:
-            # Pass the course ID through, it's the exact regex we need
             excludes.append(categoryID)
         else:
-            # Start parsing out these various base-level course categories
             excludes.append(parseTopLevelCategory(categoryID))
 
     includes = f"({'|'.join(includes)})" if len(includes) != 0 else ""

@@ -77,7 +77,7 @@ if __name__ == "__main__":
     courseCategories = []
 
     # Regexs used for course, program, and requirement identification
-    cRegex = re.compile('^[A-Z]{3}[1-4][0-9]{2}[HY][01]$')
+    cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
     pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
     reqRegex = re.compile('^Req[0-9]{1,3}$')
 
