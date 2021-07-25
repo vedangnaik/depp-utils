@@ -22,7 +22,7 @@ getCategoryCourseGETHeader = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
 }
 
-test = [
+topLevelCategoryMap = [
     # *1*/*A* = undergraduate course level constraint
     (re.compile('^\*([0-9A-Z])\*$'), lambda category: "[A-Z]{{3}}{0}[0-9]{{2}}[HY]1".format(re.compile('^\*([0-9A-Z])\*$').match(category).group(1))),
     # CSC* = undergraduate department level constraint
@@ -35,75 +35,60 @@ test = [
     (re.compile('^\*$'), lambda category: ".*"),
     # * (GR) = any graduate level course
     (re.compile('^\* \(GR\$'), lambda category: "[A-Z]{{3}}[0-9]{{4}}[HY]")
+    # CSC404H1 = specific undergraduate course code e.g. one of CSC404H1 or CSC236H1 or CSC324H1
+    (re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)'), lambda category: "{0}".format(re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)').match(category).group(1)))
 ]
 
-# *1*/*A* = undergraduate course level constraint
-# * (blah blah) = specific categoies like graduate, transfer, etc.
-# CSC* = undergraduate department level constraint
-# CSC1* = undergraduate department and course level constraint
-# PHL* (GR) = graduate department level constraint
 def parseTopLevelCategory(category):
-    courseLevelRegex = re.compile('^\*([0-9A-Z])\*$')
-    allGraduateCoursesRegex = re.compile('^\* \(GR\)$')
-    departmentLevelRegex = re.compile('^([A-Z]{3})\*$')
-    departmentAndCourseRegex = re.compile('^([A-Z]{3}[0-9A-Z])\*$')
-
-    if courseLevelRegex.match(category):
-        return f"[A-Z]{{3}}{courseLevelRegex.match(category).group(1)}[0-9]{{2}}[HY]1"
-    elif allGraduateCoursesRegex.match(category):
-        return "[A-Z]{3}[0-9]{4}[HY]";
-    elif departmentLevelRegex.match(category):
-        return f"{departmentLevelRegex.match(category).group(1)}[0-9]{{3}}[HY]1"
-    elif departmentAndCourseRegex.match(category):
-        return f"{departmentAndCourseRegex.match(category).group(1)}[0-9]{2}[HY]1"
-    else:
-        print(f"Unknown top-level type {category}")
-        return ""
+    for (regex, transform_func) in topLevelCategoryMap:
+        if regex.match(category):
+            return transform_func(category)
+        else:
+            return ""
 
 def recursiveParseCourseCategory(courseCategory):
     # Yeah, this courseID needs to be double encoded for some reason. Don't ask.
     r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxStudent/getCategoryCourses?categoryCode={urllib.parse.quote(urllib.parse.quote(courseCategory))}", headers=getCategoryCourseGETHeader)
     if (r.status_code != 200):
-        print(f"{urllib.parse.quote(urllib.parse.quote(courseCategory))} get failed, returning...")
-        # This is a special regex which does not match any string ;)
-        return "^\b$";
-    
-    # Save here instead
-    categoryObj = r.json()
-    # pprint.pprint(categoryObj)
+        print(f"{courseCategory} download failed, returning...")
+        return "";
 
-    includes = []
+    categoryObj = r.json()
+
+    # Go through each include category and parse them into regexes
+    includeRegexes = []
     for includeCategory in categoryObj["includeItems"]:
         categoryID = includeCategory["code"]
         if includeCategory["categoryEntity"]:
             # If it's another non-top-level id, recursively parse it again
-            includes.append(recursiveParseCourseCategory(categoryID))
+            includeRegexes.append(recursiveParseCourseCategory(categoryID))
         elif includeCategory["courseEntity"]:
             # Pass the course ID through, it's the exact regex we need
-            includes.append(categoryID)
+            includeRegexes.append(categoryID)
         else:
             # Start parsing out these various base-level course categories
-            includes.append(parseTopLevelCategory(categoryID))
+            includeRegexes.append(parseTopLevelCategory(categoryID))
 
-    excludes = []
+    # Do the same for the exclude category
+    excludeRegexes = []
     for excludeCategory in categoryObj["excludeItems"]:
         categoryID = excludeCategory["code"]
         if excludeCategory["categoryEntity"]:
-            excludes.append(recursiveParseCourseCategory(categoryID))
+            excludeRegexes.append(recursiveParseCourseCategory(categoryID))
         elif excludeCategory["courseEntity"]:
-            excludes.append(categoryID)
+            excludeRegexes.append(categoryID)
         else:
-            excludes.append(parseTopLevelCategory(categoryID))
+            excludeRegexes.append(parseTopLevelCategory(categoryID))
 
-    includes = f"({'|'.join(includes)})" if len(includes) != 0 else ""
-    excludes = f"(?!{'|'.join(excludes)})" if len(excludes) != 0 else ""
+    includeRegexString = f"({'|'.join(includeRegexes)})" if len(includeRegexes) != 0 else ""
+    excludeRegexString = f"(?!{'|'.join(excludeRegexes)})" if len(excludeRegexes) != 0 else ""
 
-    if includes == "":
-        return excludes
-    elif excludes == "":
-        return includes
+    if includeRegexString == "":
+        return excludeRegexString
+    elif excludeRegexString == "":
+        return includeRegexString
     else:
-        return f"({excludes}{includes})"
+        return f"({excludeRegexString}{includeRegexString})"
 
 
 # Set up argument parsing and parse args
