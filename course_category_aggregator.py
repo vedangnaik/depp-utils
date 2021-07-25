@@ -1,7 +1,6 @@
 import json
 import glob
 import argparse
-from pathlib import Path
 import re
 
 topLevelCategoryMap = [
@@ -12,11 +11,11 @@ topLevelCategoryMap = [
     # CSC1* = undergraduate department and course level constraint
     (re.compile('^([A-Z]{3}[0-9A-Z])\*$'), lambda category: "{0}[0-9]{{2}}[HY]1".format(re.compile('^([A-Z]{3}[0-9A-Z])\*$').match(category).group(1))),
     # PHL* (GR) = graduate department level constraint
-    (re.compile('^([A-Z]{3})\* \(GR\)$'), lambda category: "{0}[0-9]{{4}}[HY]".format(re.compile('^([A-Z]{3})\* \(GR\)$').match(category).group(1)))
+    (re.compile('^([A-Z]{3})\* \(GR\)$'), lambda category: "{0}[0-9]{{4}}[HY]".format(re.compile('^([A-Z]{3})\* \(GR\)$').match(category).group(1))),
     # * = Anything? TODO: figure out what this actually is
     (re.compile('^\*$'), lambda category: ".*"),
     # * (GR) = any graduate level course
-    (re.compile('^\* \(GR\$'), lambda category: "[A-Z]{{3}}[0-9]{{4}}[HY]")
+    (re.compile('^\* \(GR\)$'), lambda category: "[A-Z]{{3}}[0-9]{{4}}[HY]"),
     # CSC404H1 = specific undergraduate course code e.g. one of CSC404H1 or CSC236H1 or CSC324H1
     (re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)'), lambda category: "{0}".format(re.compile('^([A-Z]{3}[0-9]{3}[HY]1$)').match(category).group(1)))
 ]
@@ -72,7 +71,7 @@ def recursiveParseCourseCategory(courseCategory):
 
 # Set up argument parsing and parse args
 parser = argparse.ArgumentParser(description='Aggregates and parses course category JSON objects downloaded from https://degreeexplorer.utoronto.ca/.')
-parser.add_argument('--cc_jsons_dir', type=str, help="path to directory to read downloaded course category JSONs from. default: ./program_data", default="./program_data", metavar='dir')
+parser.add_argument('--cc_jsons_dir', type=str, help="path to directory to read downloaded course category JSONs from. default: ./course_category_data", default="./course_category_data", metavar='dir')
 parser.add_argument('--cc_ids_file', type=argparse.FileType('w'), help="path to file to write aggregated programs into. default: ./aggregated_course_categories.json", default="./aggregated_course_categories.json", metavar='file')
 
 # Dict to hold final aggregated course categories obj
@@ -94,6 +93,7 @@ if __name__ == "__main__":
             ccObj = json.load(f)
             courseCategory = ccObj["code"]
 
+        print(ccFile)
         aggregated_course_categories[courseCategory] = recursiveParseCourseCategory(courseCategory)
 
     # We have finished modifying all the courses. Write aggregated_courses to file
