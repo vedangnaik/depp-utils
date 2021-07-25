@@ -24,8 +24,7 @@ def parseTopLevelCategory(category):
     for (regex, transform_func) in topLevelCategoryMap:
         if regex.match(category):
             return transform_func(category)
-        else:
-            return ""
+    return ""
 
 def recursiveParseCourseCategory(courseCategory):
     # Open the file for this category and get the JSON
@@ -40,11 +39,8 @@ def recursiveParseCourseCategory(courseCategory):
         if includeCategory["categoryEntity"]:
             # If it's another non-top-level id, recursively parse it again
             includeRegexes.append(recursiveParseCourseCategory(categoryID))
-        elif includeCategory["courseEntity"]:
-            # Pass the course ID through, it's the exact regex we need
-            includeRegexes.append(categoryID)
         else:
-            # Start parsing out these various base-level course categories
+            # It's a base-level course category, parse it separately
             includeRegexes.append(parseTopLevelCategory(categoryID))
 
     # Do the same for the exclude category
@@ -53,8 +49,6 @@ def recursiveParseCourseCategory(courseCategory):
         categoryID = excludeCategory["code"]
         if excludeCategory["categoryEntity"]:
             excludeRegexes.append(recursiveParseCourseCategory(categoryID))
-        elif excludeCategory["courseEntity"]:
-            excludeRegexes.append(categoryID)
         else:
             excludeRegexes.append(parseTopLevelCategory(categoryID))
 
@@ -88,12 +82,14 @@ if __name__ == "__main__":
     for ccFile in glob.glob(f"{args.cc_jsons_dir}/*.json"):
         attempted += 1
 
+        if not ccFile == "./course_category_data\AS-CSC4_ALL.json":
+            continue 
+
         # Read file into dict
         with open(ccFile) as f:
             ccObj = json.load(f)
             courseCategory = ccObj["code"]
 
-        print(ccFile)
         aggregated_course_categories[courseCategory] = recursiveParseCourseCategory(courseCategory)
 
     # We have finished modifying all the courses. Write aggregated_courses to file
@@ -102,6 +98,6 @@ if __name__ == "__main__":
 
     # Print diagnostics
     print("Finished.")
-    print(f"Cleaned and aggregate {attempted} course(s) from {args.cc_jsons_dir}")
+    print(f"Cleaned and aggregated {attempted} course(s) from {args.cc_jsons_dir}")
 
     args.cc_ids_file.close()
