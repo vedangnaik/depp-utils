@@ -44,7 +44,20 @@ if __name__ == "__main__":
         # Keep only the code for each requisite item. This will make it easier to assemble the description later
         for _, reqObj in programObj['detailAssessments'].items():
             for i in range(len(reqObj['requisiteItems'])):
-                reqObj['requisiteItems'][i] = reqObj['requisiteItems'][i]["code"]
+                code = reqObj['requisiteItems'][i]["code"]
+                if "Req" in code:
+                    category = "requirement"
+                elif reqObj['requisiteItems'][i]["categoryEntity"]:
+                    category = "category"
+                elif reqObj['requisiteItems'][i]["courseEntity"]:
+                    category = "course"
+                else:
+                    category = "unknown"
+
+                reqObj['requisiteItems'][i] = {
+                    "code": code,
+                    "category": category
+                }
 
         # Now, we go through each requirement and clean it. We all add a nicer description
         keysToKeep = []
@@ -53,7 +66,7 @@ if __name__ == "__main__":
                 reqObj['description'] = reqObj['displayPrefix']
                 keysToKeep = ['type', 'description']
             else:
-                listOfReqsStr = f" {reqObj['subItemConnectorString']} ".join(reqObj['requisiteItems'])
+                listOfReqsStr = f" {reqObj['subItemConnectorString']} ".join(list(map(lambda d: d["code"], reqObj['requisiteItems'])))
                 reqObj["description"] = f"{reqObj['displayPrefix']} {listOfReqsStr} {reqObj['displaySuffix']}".strip();
                 keysToKeep = ["type", "count", "requisiteItems", "description"]
         
