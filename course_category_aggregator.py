@@ -17,7 +17,7 @@ topLevelCategoryMap = [
     # * (GR) = any graduate level course
     (re.compile('^\* \(GR\)$'), lambda category: "[A-Z][A-Z][A-Z][0-9][0-9][0-9][0-9][HY]"),
     # CSC404H1 = specific undergraduate course code e.g. one of CSC404H1 or CSC236H1 or CSC324H1
-    (re.compile('^[A-Z][A-Z][A-Z][0-9][0-9][0-9][HY]1$'), lambda category: "{0}".format(re.compile('^[A-Z][A-Z][A-Z][0-9][0-9][0-9][HY]1$').match(category).group(0)))
+    (re.compile('^[A-Z][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$'), lambda category: "{0}".format(re.compile('^[A-Z][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$').match(category).group(0)))
 ]
 
 def parseTopLevelCategory(category):
@@ -29,8 +29,16 @@ def parseTopLevelCategory(category):
 def recursiveParseCourseCategory(courseCategory):
     # Open the file for this category and get the JSON
     ccFilename = "".join(i for i in courseCategory if i not in "\/:*?<>|")
-    with open(f"{args.cc_jsons_dir}/{ccFilename}.json") as f:
-        categoryObj = json.load(f)
+    # complete_status - whether the regex is complete or now
+    validatable = True
+
+
+    try:
+        with open(f"{args.cc_jsons_dir}/{ccFilename}.json") as f:
+            categoryObj = json.load(f)
+    except:
+        validatable = False
+        return ("", validatable)
         
     # Go through each include category and parse them into regexes
     includeRegexes = []
@@ -38,29 +46,42 @@ def recursiveParseCourseCategory(courseCategory):
         categoryID = includeCategory["code"]
         if includeCategory["categoryEntity"]:
             # If it's another non-top-level id, recursively parse it again
-            includeRegexes.append(recursiveParseCourseCategory(categoryID))
+            (regex, dependent_validatable) = recursiveParseCourseCategory(categoryID)
+            validatable = validatable and dependent_validatable
+            if dependent_validatable:
+                includeRegexes.append(regex)
         else:
             # It's a base-level course category, parse it separately
-            includeRegexes.append(parseTopLevelCategory(categoryID))
+            regex = parseTopLevelCategory(categoryID)
+            # Complete if the string is not empty
+            validatable = validatable and regex != ""
+            if regex != "":
+                includeRegexes.append(regex)
 
     # Do the same for the exclude category
     excludeRegexes = []
     for excludeCategory in categoryObj["excludeItems"]:
         categoryID = excludeCategory["code"]
         if excludeCategory["categoryEntity"]:
-            excludeRegexes.append(recursiveParseCourseCategory(categoryID))
+            (regex, dependent_validatable) = recursiveParseCourseCategory(categoryID)
+            validatable = validatable and dependent_validatable
+            if dependent_validatable:
+                excludeRegexes.append(regex)
         else:
-            excludeRegexes.append(parseTopLevelCategory(categoryID))
+            regex = parseTopLevelCategory(categoryID)
+            validatable = validatable and regex != ""
+            if regex != "":
+                excludeRegexes.append(regex)
 
     includeRegexString = f"({'|'.join(includeRegexes)})" if len(includeRegexes) != 0 else ""
     excludeRegexString = f"(?!{'|'.join(excludeRegexes)})" if len(excludeRegexes) != 0 else ""
 
     if includeRegexString == "":
-        return excludeRegexString
+        return (excludeRegexString, validatable)
     elif excludeRegexString == "":
-        return includeRegexString
+        return (includeRegexString, validatable)
     else:
-        return f"({excludeRegexString}{includeRegexString})"
+        return (f"({excludeRegexString}{includeRegexString})", validatable)
 
 
 # Set up argument parsing and parse args
@@ -87,7 +108,12 @@ if __name__ == "__main__":
             ccObj = json.load(f)
             courseCategory = ccObj["code"]
 
-        aggregated_course_categories[courseCategory] = recursiveParseCourseCategory(courseCategory)
+        (regex, complete_status) = recursiveParseCourseCategory(courseCategory)
+        aggregated_course_categories[courseCategory] = {
+            "regex": regex,
+            "display": f"{courseCategory}: {ccObj['display']}".strip(),
+            "validatable": complete_status
+        }
 
     # We have finished modifying all the courses. Write aggregated_courses to file
     print(aggregated_course_categories)
