@@ -43,23 +43,33 @@ if __name__ == "__main__":
 
         # Keep only the code for each requisite item. This will make it easier to assemble the description later
         for _, reqObj in programObj['detailAssessments'].items():
-            for i in range(len(reqObj['requisiteItems'])):
-                code = reqObj['requisiteItems'][i]["code"]
-                if "Req" in code:
-                    category = "requirement"
-                elif reqObj['requisiteItems'][i]["categoryEntity"]:
-                    category = "category"
-                elif reqObj['requisiteItems'][i]["courseEntity"]:
-                    category = "course"
-                else:
-                    category = "unknown"
+            if len(reqObj['requisiteItems']) == 0:
+                continue
 
-                reqObj['requisiteItems'][i] = {
-                    "code": code,
-                    "category": category
-                }
+            if "Req" in reqObj['requisiteItems'][0]["code"]:
+                reqObj["requisiteType"] = "requirement"
+                for i in range(len(reqObj['requisiteItems'])):
+                    code = reqObj['requisiteItems'][i]["code"]
+                    reqObj['requisiteItems'][i] = {
+                        "code": code
+                    }
+            else:
+                reqObj["requisiteType"] = "course/category"
+                for i in range(len(reqObj['requisiteItems'])):
+                    code = reqObj['requisiteItems'][i]["code"]
+                    if reqObj['requisiteItems'][i]["categoryEntity"]:
+                        itemType = "category"
+                    elif reqObj['requisiteItems'][i]["courseEntity"]:
+                        itemType = "course"
+                    else:
+                        itemType = "unknown"
 
-        # Now, we go through each requirement and clean it. We all add a nicer description
+                    reqObj['requisiteItems'][i] = {
+                        "code": code,
+                        "itemType": itemType
+                    }
+
+        # Now, we go through each requirement and clean it. We also add a nicer description
         keysToKeep = []
         for _, reqObj in programObj['detailAssessments'].items():
             if reqObj['type'] == 'NOTE':
@@ -68,7 +78,7 @@ if __name__ == "__main__":
             else:
                 listOfReqsStr = f" {reqObj['subItemConnectorString']} ".join(list(map(lambda d: d["code"], reqObj['requisiteItems'])))
                 reqObj["description"] = f"{reqObj['displayPrefix']} {listOfReqsStr} {reqObj['displaySuffix']}".strip();
-                keysToKeep = ["type", "count", "requisiteItems", "description"]
+                keysToKeep = ["type", "count", "requisiteItems", "requisiteType", "description"]
         
             # Remove unwanted keys
             for key in list(reqObj.keys()):
