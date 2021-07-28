@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import argparse
 import sys
+import re
 
 getCourseInfoGETHeader = {
     "Host": "degreeexplorer.utoronto.ca",
@@ -50,7 +51,7 @@ parser.add_argument('cookie', type=str, help="cookie from a valid Degree Explore
 parser.add_argument('row_num', type=int, help="row num of DE timetable into which to add courses before download")
 parser.add_argument('col_num', type=int, help="col num of DE timetable into which to add courses before download")
 parser.add_argument('--c_jsons_dir', type=str, help="path to directory to store downloaded course JSONs. default: ./course_data", default="./course_data", metavar='dir')
-
+parser.add_argument('--c_cc_ids_file', type=argparse.FileType('a'), help="path to ASCII file to store course categories from downloaded course JSONs. default: ./courses-course-category-ids.txt", default="./courses-course-category-ids.txt", metavar='file')
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -65,15 +66,22 @@ if __name__ == "__main__":
     addCoursePOSTHeader["Cookie"] = args.cookie
     getCourseInfoGETHeader["Cookie"] = args.cookie
 
+    # Status vars
     attempted = 0
     successes = 0
     skipped = []
     failures = []
 
+    # Regexs used for course, program, and requirement identification
+    cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
+    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
+    prereqRegex = re.compile('^P[0-9]{1,3}$')
+
     for line in sys.stdin:
         courseID = line.strip()
         attempted += 1
 
+        # Skip the course if we've already scraped it
         f = Path(f"{args.c_jsons_dir}/{courseID}.json")
         if f.is_file():
             skipped.append(courseID)
@@ -84,14 +92,24 @@ if __name__ == "__main__":
         if (r.status_code != 200):
             failures.append(courseID)
             continue
-        
         r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/getCellDetails?tabIndex=1&rowIndex={args.row_num}&colIndex={args.col_num}", headers=getCourseInfoGETHeader)
         if (r.status_code != 200):
             failures.append(courseID)
             continue
+        thisCourseObj = r.json()
 
+        # Save the program info to file
         with open(f"{args.c_jsons_dir}/{courseID}.json", 'w') as f:
-            json.dump(r.json(), f, ensure_ascii=False, indent=2)
+            json.dump(thisCourseObj, f, ensure_ascii=False, indent=2)
+
+        # Save any course categories from this one's exclusions, corequisites, and prerequisites
+        for category in ["prerequisites", "corequisites", "orderedExclusions"]:
+            for categoryObj in thisCourseObj[category]:
+                for requisiteItem in categoryObj["requisiteItems"]:
+                    code = requisiteItem["code"]
+                    if not cRegex.match(code) and not pRegex.match(code) and not prereqRegex.match(code) and code != "":
+                        args.c_cc_ids_file.write(code + "\n")
+
         print(f"Downloaded data for {courseID}")
         successes += 1
 

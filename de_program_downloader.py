@@ -73,9 +73,6 @@ if __name__ == "__main__":
     skipped = []
     failures = []
 
-    # Array to hold any course categories found in the program's requirements
-    courseCategories = []
-
     # Regexs used for course, program, and requirement identification
     cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
     pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
@@ -122,9 +119,8 @@ if __name__ == "__main__":
         for detailAssessment in thisProgramObj["detailAssessments"]:
             for requisiteItem in detailAssessment["requirement"]["requisiteItems"]:
                 code = requisiteItem["code"]
-                if not cRegex.match(code) and not reqRegex.match(code) and code not in courseCategories:
+                if not cRegex.match(code) and not pRegex.match(code) and not reqRegex.match(code) and code != "":
                     args.p_cc_ids_file.write(code + "\n")
-                    courseCategories.append(code)
 
     # Reset the courses to clean up
     r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/resetPrograms?tabIndex=0", headers=resetProgramsPOSTHeader)
