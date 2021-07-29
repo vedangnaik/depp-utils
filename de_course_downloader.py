@@ -71,6 +71,8 @@ if __name__ == "__main__":
     successes = 0
     skipped = []
     failures = []
+    # Used to keep track of how many have failed in a row. If it's more than a threshold, the cookie has likely become invalid. Auto-quit at that point to stop hammering the server.
+    consecutive_failures = 0
 
     # Regexs used for course, program, and requirement identification
     cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
@@ -78,6 +80,10 @@ if __name__ == "__main__":
     prereqRegex = re.compile('^P[0-9]{1,3}$')
 
     for line in sys.stdin:
+        if consecutive_failures >= 20:
+            print(f"Detected {consecutive_failures} consecutive failures. This is likely because the cookie has become invalid. Quitting now to avoid unnecessary API calls.")
+            break
+
         courseID = line.strip()
         attempted += 1
 
@@ -91,10 +97,12 @@ if __name__ == "__main__":
         r = requests.post(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveCourseEntry?tabIndex=1&selRowIndex={args.row_num}&selColIndex={args.col_num}&newCourseCode={courseID}", headers=addCoursePOSTHeader)
         if (r.status_code != 200):
             failures.append(courseID)
+            consecutive_failures += 1
             continue
         r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/getCellDetails?tabIndex=1&rowIndex={args.row_num}&colIndex={args.col_num}", headers=getCourseInfoGETHeader)
         if (r.status_code != 200):
             failures.append(courseID)
+            consecutive_failures += 1
             continue
         thisCourseObj = r.json()
 
@@ -111,6 +119,7 @@ if __name__ == "__main__":
                         args.c_cc_ids_file.write(code + "\n")
 
         print(f"Downloaded data for {courseID}")
+        consecutive_failures = 0 # Reset this
         successes += 1
 
     # Print diagnostics
