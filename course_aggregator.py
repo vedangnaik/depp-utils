@@ -42,21 +42,39 @@ if __name__ == "__main__":
             for i in range(len(prereqObj['requisiteItems'])):
                 prereqObj['requisiteItems'][i] = prereqObj['requisiteItems'][i]["code"]
 
-            # Now, we proceed differently depending on whether the prereq is a 'NOTE' type of not. In both cases, the display string is added to a new attribute 'description'.
-            keysToKeep = []
-            if (prereqObj['type'] == 'NOTE'):
+            # Now, we proceed differently depending on what types and countTypes and other factors this prerequisite has. Reduction in final file size can be acheived by determining ahead of time which requisites are unverifiable, and reducing their content.
+            # Array to identify which keys to keep in the final object.
+            keysToKeep = ["description"]
+            # Note types have nothing to say other than their description
+            if prereqObj['type'] == 'NOTE':
                 # Create the string
-                prereqObj["description"] = f"Note - {prereqObj['displaySuffix']}".strip();
+                prereqObj["description"] = f"{prereqObj['displaySuffix']}".strip()
                 # Delete all other than these
-                keysToKeep = ["type", "description"];
+                keysToKeep += ["type"]
+            # COMPLEX FCES and COURSES cannot be verified as they represent exemptions and other permissions.
+            elif prereqObj["type"] == "COMPLEX" and (prereqObj["countType"] == "FCES" or prereqObj["countType"] == "COURSES"):
+                prereqObj["description"] = f"{prereqObj['displaySuffix']}".strip()
+                keysToKeep += ["type", "countType"]
+            # GPA and Year of Study and cannot be checked
+            elif prereqObj["countType"] == "GPA" or prereqObj["countType"] == "YOS":
+                prereqObj["description"] = f"{prereqObj['displayPrefix']}".strip()
+                keysToKeep += ["countType"]
+            # Average (only three of these lol) cannot be checked
+            elif prereqObj["countType"] == "AVERAGE":
+                listOfReqsStr = f" {prereqObj['subItemConnectorString']} ".join(prereqObj['requisiteItems'])
+                prereqObj["description"] = f"{prereqObj['displayPrefix']} {listOfReqsStr} {prereqObj['displaySuffix']}".strip()
+                keysToKeep += ["countType"]
             else:
                 listOfReqsStr = f" {prereqObj['subItemConnectorString']} ".join(prereqObj['requisiteItems'])
-                prereqObj["description"] = f"{prereqObj['displayPrefix']} {listOfReqsStr} {prereqObj['displaySuffix']}".strip();
-                keysToKeep = ["type", "count", "requisiteItems", "countType", "description"]
+                prereqObj["description"] = f"{prereqObj['displayPrefix']} {listOfReqsStr} {prereqObj['displaySuffix']}".strip()
+                keysToKeep += ["type", "count", "requisiteItems", "countType"]
 
             for key in list(prereqObj.keys()):
                 if key not in keysToKeep:
                     del prereqObj[key]
+
+            # Collapse multiple spaces in description
+            prereqObj["description"] = ' '.join(prereqObj["description"].split())
 
             # Done, add it to the new dict
             newPrereqs[prereqID] = prereqObj
