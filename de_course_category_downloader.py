@@ -110,7 +110,7 @@ if __name__ == "__main__":
         skipped += skips
         failures += fails
 
-        print(f"Downloaded data for {courseCategory}")
+        print(f"{courseCategory} - Successes:{sucs}, Skips:{len(skips)}, Fails:{len(fails)}")
 
     # Status info
     print("Finished.")
