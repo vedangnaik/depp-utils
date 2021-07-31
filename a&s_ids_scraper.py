@@ -38,13 +38,34 @@ if __name__ == "__main__":
 
     # A few subject areas all link to the same page. Notably, these include those offered by colleges such as Trinity, University, etc. which all link to the respective college's page. Thus, we scrape some courses multiple times. This is to prevent such duplicates.
     coursesSeen = []
-    cRegex = re.compile('^[A-Z]{3}[1-4][0-9]{2}[HY][01]$')
+    cRegex = re.compile('[A-Z]{3}[1-4][0-9]{2}[HY][01]')
     # To weed out duplicate program IDs, just in case they come up somehow.
     programsSeen = []
-    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)[0-9]{4}.?$')
+    pRegex = re.compile('AS(MAJ|SPE|MIN|FOC|CER)[0-9]{4}.?')
+
 
     for link in subjectAreaLinks:
         driver.get(link)
+        # elems = driver.find_elements_by_css_selector(".view-display-id-block_1")
+        collapsiblePs = driver.find_elements_by_css_selector('.js-views-accordion-group-header')
+        for p in collapsiblePs:
+            t = 0
+            text = p.get_attribute('innerText')
+            c = cRegex.search(text)
+            p = pRegex.search(text)
+            if c:
+                coursesSeen.append(c.group(0))
+                args.c_ids_file.write(c.group(0) + "\n")
+                t += 1
+            if p:
+                programsSeen.append(p.group(0))
+                args.p_ids_file.write(p.group(0) + "\n")
+                t += 1
+            if t >= 2:
+                print(f"{link}: {text} is both")
+
+        print(f"{link}: {len(collapsiblePs)}")
+        continue
 
         # This xpath always leads to the elements which contain the names of the courses.
         coursesPs = driver.find_elements_by_xpath('//*[@id="block-fas-content"]/div/div/div/div[3]/div[2]/div[3]/div/p')
@@ -53,7 +74,7 @@ if __name__ == "__main__":
         programPs = driver.find_elements_by_xpath('//*[@id="block-fas-content"]/div/div/div/div[3]/div[1]/div[2]/div/p')
         
         for p in coursesPs:
-            # There's a space before the actual course ID, so we extract the first to ninth letters and output to stdout.
+            # There's a space before the actual course ID, so we extract the first to ninth letters and output to the file.
             courseID = p.get_attribute('innerText')[1:9]
             if cRegex.match(courseID) and courseID not in coursesSeen:
                 coursesSeen.append(courseID)

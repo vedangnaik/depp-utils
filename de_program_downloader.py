@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # Regexs used for course, program, and requirement identification
     cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
-    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
+    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC|CER)([0-9]{4}).?$')
     reqRegex = re.compile('^Req[0-9]{1,3}$')
 
     # The current study area being downloaded. Some focuses in DE have strict dependencies on the specialist/major already being present. This ensures that we always try downloading focuses after the dependency is added.
@@ -87,10 +87,13 @@ if __name__ == "__main__":
         studyAreaNum = pRegex.match(programID).group(2)
         attempted += 1
 
+        print(f"{programID} - Status: ", end="")
+
         # Skip the program if we've already scraped it
         f = Path(f"{args.p_jsons_dir}/{programID}.json")
         if f.is_file():
             skipped.append(programID)
+            print("Skipped")
             continue
 
         # Reset if we've finished all the programs from this subject area
@@ -99,13 +102,14 @@ if __name__ == "__main__":
             if (r.status_code != 200):
                 print("Course reset failed, quitting for now...")
                 sys.exit(1)
-            print(f"Reseting programs for number {currentStudyArea}, moving to {studyAreaNum}")
+            # print(f"Reseting programs for number {currentStudyArea}, moving to {studyAreaNum}")
             currentStudyArea = studyAreaNum
 
         # Add the program, hopefully it doesn't fail due to an un-added prereq program
         r = requests.post(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/saveProgramEntry?tabIndex=0&newPostCode={programID}", headers=addProgramPOSTHeader)
         if (r.status_code != 200):
             failures.append(programID)
+            print("Failed")
             continue
 
 
@@ -121,6 +125,9 @@ if __name__ == "__main__":
                 code = requisiteItem["code"]
                 if not cRegex.match(code) and not pRegex.match(code) and not reqRegex.match(code) and code != "":
                     args.p_cc_ids_file.write(code + "\n")
+        
+        print("Succeeded")
+        successes += 1
 
     # Reset the courses to clean up
     r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/resetPrograms?tabIndex=0", headers=resetProgramsPOSTHeader)

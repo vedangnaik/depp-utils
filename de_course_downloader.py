@@ -87,10 +87,13 @@ if __name__ == "__main__":
         courseID = line.strip()
         attempted += 1
 
+        print(f"{courseID} - Status: ", end="")
+
         # Skip the course if we've already scraped it
         f = Path(f"{args.c_jsons_dir}/{courseID}.json")
         if f.is_file():
             skipped.append(courseID)
+            print("Skipped")
             continue
 
         # Add the course, then get it's info. Equivalent to adding it by hovering+typing, then seeing the information by clicking on the tile.
@@ -98,11 +101,13 @@ if __name__ == "__main__":
         if (r.status_code != 200):
             failures.append(courseID)
             consecutive_failures += 1
+            print("Failed")
             continue
         r = requests.get(f"https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/getCellDetails?tabIndex=1&rowIndex={args.row_num}&colIndex={args.col_num}", headers=getCourseInfoGETHeader)
         if (r.status_code != 200):
             failures.append(courseID)
             consecutive_failures += 1
+            print("Failed")
             continue
         thisCourseObj = r.json()
 
@@ -118,7 +123,7 @@ if __name__ == "__main__":
                     if not cRegex.match(code) and not pRegex.match(code) and not prereqRegex.match(code) and code != "":
                         args.c_cc_ids_file.write(code + "\n")
 
-        print(f"Downloaded data for {courseID}")
+        print("Succeeded")
         consecutive_failures = 0 # Reset this
         successes += 1
 
