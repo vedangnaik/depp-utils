@@ -49,27 +49,26 @@ if __name__ == "__main__":
             type_ = prereqObj["type"]
             countType = prereqObj["countType"]
 
-            # For each requisite item, we only need the code. The other information appears to be purely stylistic.
+            # For each requisite item, we only need the code and the type of the code i.e. course, program, or category, or another prereq. We will group them via these labels.
+            courses = []
+            programs = []
+            categories = []
+            dependentPrereqs = []
             for i in range(len(prereqObj['requisiteItems'])):
                 code = prereqObj['requisiteItems'][i]["code"]
                 requisiteCodes.append(code)
-                # obj = {}
-                # if allCoursesRe.match(code):
-                #     obj = { "course": code }
-                # elif allProgramsRe.match(code):
-                #     obj = { "program": code }
-                # elif prerequisiteRe.match(code):
-                #     obj = { "prereq": code }
-                # else:
-                #     obj = { "category": code }
-                # prereqObj['requisiteItems'][i] = obj
-                prereqObj['requisiteItems'][i] = code
+                if allCoursesRe.match(code):
+                    courses.append(code)
+                elif allProgramsRe.match(code):
+                    programs.append(code)
+                elif prerequisiteRe.match(code):
+                    dependentPrereqs.append(code)
+                else:
+                    categories.append(code)
             
             # Now, we proceed differently depending on what types and countTypes and other factors this prerequisite has. Reduction in final file size can be acheived by determining ahead of time which requisites are unverifiable, and reducing their content.
-
-            # Array to identify which keys to keep in the final object. These two are needed in all of them, so cases can add to these.
+            # Array of prereq obj keys to keep. Can be modified as necessary to include the bare minimum needed, but these two are mandatory for all.
             keysToKeep = ["description", "type"]
-
             # We will combine all of these subtypes into a single 'unverifiable' type to save space.
             if countType in ["AVERAGE", "YOS", "GPA", "GRADE"] or type_ == "COMPLEX":
                 prereqObj["type"] = "UNVERIFIABLE"
@@ -79,49 +78,69 @@ if __name__ == "__main__":
             else:
                 if type_ == "NOTE":
                     prereqObj["description"] = displaySuffix.strip()
+
                 # REQUISITES family - only one relevant type
                 elif countType == "REQUISITES" and type_ == "MINIMUM":
+                    keysToKeep += ["count", "dependentPrereqs"]
+
                     prereqObj["type"] = "REQUISITES_MIN"
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
                     prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
-                    keysToKeep += ["count", "requisiteItems"]
+                    prereqObj["dependentPrereqs"] = dependentPrereqs
+
                 # COURSES family
                 elif countType == "COURSES":
-                    listOfReqsStr = f" {connector} ".join(requisiteCodes)
-                    prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
+                    keysToKeep += ["courses", "categories"]
+
                     # Subfamilies
                     if type_ == "MINIMUM":
                         prereqObj["type"] = "COURSES_MIN"
-                        keysToKeep += ["count", "requisiteItems"]
+                        keysToKeep += ["count"]
                     elif type_ == "LIST":
                         prereqObj["type"] = "COURSES_LIST"
-                        keysToKeep += ["requisiteItems"]
                     elif type_ == "GROUPMINIMUM":
                         prereqObj["type"] = "COURSES_GROUPMIN"
-                        keysToKeep += ["count", "requisiteItems"]
-                # FCES family
-                elif countType == "FCES":
+                        keysToKeep += ["count"]
+
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
                     prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
+                    prereqObj["courses"] = courses
+                    prereqObj["categories"] = categories
+
+                # FCES family
+                elif countType == "FCES":
+                    keysToKeep += ["courses", "categories"]
+                    
                     # Subfamilies
                     if type_ == "MINIMUM":
                         prereqObj["type"] = "FCES_MIN"
-                        keysToKeep += ["count", "requisiteItems"]
+                        keysToKeep += ["count"]
                     elif type_ == "LIST":
                         prereqObj["type"] = "FCES_LIST"
-                        keysToKeep += ["requisiteItems"]
                     elif type_ == "MAXIMUM":
                         prereqObj["type"] = "FCES_MAX"
-                        keysToKeep += ["count", "requisiteItems"]
+                        keysToKeep += ["count"]
                     elif type_ == "GROUPMINIMUM":
                         prereqObj["type"] = "FCES_GROUPMIN"
-                        keysToKeep += ["count", "requisiteItems"]
+                        keysToKeep += ["count"]
+                    
+                    listOfReqsStr = f" {connector} ".join(requisiteCodes)
+                    prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
+                    prereqObj["courses"] = courses
+                    prereqObj["categories"] = categories
+
+                    if prereqObj["type"] == "FCES_LIST" and categories != []:
+                        print(courseFile)
+
                 # SUBJECT_POSTS family - only one relevant here
                 elif countType == "SUBJECT_POSTS" and type_ == "MINIMUM":
+                    keysToKeep += ["count", "programs"]
+
                     prereqObj["type"] = "PROGRAM_MIN"
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
                     prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
-                    keysToKeep += ["count", "requisiteItems"]
+                    prereqObj["programs"] = programs
+
                 # Whatever else
                 else:
                     print(countType, type_)
