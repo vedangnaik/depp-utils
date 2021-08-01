@@ -2,10 +2,11 @@
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-import sys
 import re
 import argparse
 from pathlib import Path
+
+from constants import stGeorgeCoursesRe, allProgramsRe
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(description='Scrapes course and program IDs from https://artsci.calendar.utoronto.ca/listing-program-subject-areas.')
@@ -37,11 +38,9 @@ if __name__ == "__main__":
             subjectAreaLinks.append(a.get_attribute('href'))
 
     # A few subject areas all link to the same page. Notably, these include those offered by colleges such as Trinity, University, etc. which all link to the respective college's page. Thus, we scrape some courses multiple times. This is to prevent such duplicates.
-    coursesSeen = []
-    cRegex = re.compile('[A-Z]{3}[1-4][0-9]{2}[HY][01]')
+    numCourses = 0
     # To weed out duplicate program IDs, just in case they come up somehow.
-    programsSeen = []
-    pRegex = re.compile('AS(MAJ|SPE|MIN|FOC|CER)[0-9]{4}.?')
+    numPrograms = 0
 
 
     for link in subjectAreaLinks:
@@ -49,53 +48,23 @@ if __name__ == "__main__":
         # elems = driver.find_elements_by_css_selector(".view-display-id-block_1")
         collapsiblePs = driver.find_elements_by_css_selector('.js-views-accordion-group-header')
         for p in collapsiblePs:
-            t = 0
             text = p.get_attribute('innerText')
-            c = cRegex.search(text)
-            p = pRegex.search(text)
+            c = stGeorgeCoursesRe.search(text)
+            p = allProgramsRe.search(text)
             if c:
-                coursesSeen.append(c.group(0))
+                numCourses += 1
                 args.c_ids_file.write(c.group(0) + "\n")
-                t += 1
             if p:
-                programsSeen.append(p.group(0))
+                numPrograms += 1
                 args.p_ids_file.write(p.group(0) + "\n")
-                t += 1
-            if t >= 2:
-                print(f"{link}: {text} is both")
 
         print(f"{link}: {len(collapsiblePs)}")
-        continue
-
-        # This xpath always leads to the elements which contain the names of the courses.
-        coursesPs = driver.find_elements_by_xpath('//*[@id="block-fas-content"]/div/div/div/div[3]/div[2]/div[3]/div/p')
-
-        # This xpath always leads to the elements which contain the names of the programs.
-        programPs = driver.find_elements_by_xpath('//*[@id="block-fas-content"]/div/div/div/div[3]/div[1]/div[2]/div/p')
-        
-        for p in coursesPs:
-            # There's a space before the actual course ID, so we extract the first to ninth letters and output to the file.
-            courseID = p.get_attribute('innerText')[1:9]
-            if cRegex.match(courseID) and courseID not in coursesSeen:
-                coursesSeen.append(courseID)
-                args.c_ids_file.write(courseID + "\n")
-            else:
-                print(f"Course {courseID} is a duplicate or failed the course ID regex.", file=sys.stderr)
-
-        for p in programPs:
-            # The program ID comes at the end of the full name, after the last '-' character. Some incomplete sentences do not have any ID at all, so these are ignored. We use a regex to see whether the program IDs match.
-            programID = p.get_attribute('innerText').split("-")[-1][1:]
-            if pRegex.match(programID) and programID not in programsSeen:
-                programsSeen.append(programID)
-                args.p_ids_file.write(programID + "\n")
-            else:
-                print(f"Program {programID} is a duplicate or failed the program ID regex.", file=sys.stderr)
 
     # Print some diagnostics
     print("Finished.")
     print(f"Examined {len(subjectAreaLinks)} subject areas and scraped:")
-    print(f"\t{len(coursesSeen)} course(s)")
-    print(f"\t{len(programsSeen)} program(s)")
+    print(f"\t{numCourses} course(s)")
+    print(f"\t{numPrograms} program(s)")
 
     # Close stuff
     args.c_ids_file.close()

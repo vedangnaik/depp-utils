@@ -3,7 +3,8 @@ from pathlib import Path
 import json
 import argparse
 import sys
-import re
+
+from constants import allCoursesRe, allProgramsRe, requirementRe
 
 addProgramPOSTHeader = {
     "Accept": "application/json, text/plain, */*",
@@ -73,18 +74,13 @@ if __name__ == "__main__":
     skipped = []
     failures = []
 
-    # Regexs used for course, program, and requirement identification
-    cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
-    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC|CER)([0-9]{4}).?$')
-    reqRegex = re.compile('^Req[0-9]{1,3}$')
-
     # The current study area being downloaded. Some focuses in DE have strict dependencies on the specialist/major already being present. This ensures that we always try downloading focuses after the dependency is added.
     currentStudyArea = None
 
     # Loop through every course from stdin
     for line in sys.stdin:
         programID = line.strip()
-        studyAreaNum = pRegex.match(programID).group(2)
+        studyAreaNum = allProgramsRe.match(programID).group(2)
         attempted += 1
 
         print(f"{programID} - Status: ", end="")
@@ -123,7 +119,7 @@ if __name__ == "__main__":
         for detailAssessment in thisProgramObj["detailAssessments"]:
             for requisiteItem in detailAssessment["requirement"]["requisiteItems"]:
                 code = requisiteItem["code"]
-                if not cRegex.match(code) and not pRegex.match(code) and not reqRegex.match(code) and code != "":
+                if not allCoursesRe.match(code) and not allProgramsRe.match(code) and not requirementRe.match(code) and code != "":
                     args.p_cc_ids_file.write(code + "\n")
         
         print("Succeeded")

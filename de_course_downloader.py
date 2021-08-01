@@ -7,6 +7,8 @@ import argparse
 import sys
 import re
 
+from constants import allCoursesRe, allProgramsRe, prerequisiteRe
+
 getCourseInfoGETHeader = {
     "Host": "degreeexplorer.utoronto.ca",
     "Connection": "keep-alive",
@@ -74,11 +76,6 @@ if __name__ == "__main__":
     # Used to keep track of how many have failed in a row. If it's more than a threshold, the cookie has likely become invalid. Auto-quit at that point to stop hammering the server.
     consecutive_failures = 0
 
-    # Regexs used for course, program, and requirement identification
-    cRegex = re.compile('^[A-Z]{3}[A-Z0-9][0-9]{2,3}[HY][0-9]?$')
-    pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC)([0-9]{4}).?$')
-    prereqRegex = re.compile('^P[0-9]{1,3}$')
-
     for line in sys.stdin:
         if consecutive_failures >= 20:
             print(f"Detected {consecutive_failures} consecutive failures. This is likely because the cookie has become invalid. Quitting now to avoid unnecessary API calls.")
@@ -120,7 +117,8 @@ if __name__ == "__main__":
             for categoryObj in thisCourseObj[category]:
                 for requisiteItem in categoryObj["requisiteItems"]:
                     code = requisiteItem["code"]
-                    if not cRegex.match(code) and not pRegex.match(code) and not prereqRegex.match(code) and code != "":
+                    # If the code isn't a course from any campus or a program or a prerequisite ID or empty, then it must be a course category
+                    if not allCoursesRe.match(code) and not allProgramsRe.match(code) and not prerequisiteRe.match(code) and code != "":
                         args.c_cc_ids_file.write(code + "\n")
 
         print("Succeeded")

@@ -4,6 +4,7 @@ import json
 import glob
 import argparse
 from pathlib import Path
+import re
 
 # Set up argument parsing
 parser = argparse.ArgumentParser(description='Aggregates and cleans course JSON objects downloaded from https://degreeexplorer.utoronto.ca/.')
@@ -12,6 +13,10 @@ parser.add_argument('--c_aggr_file', type=argparse.FileType('w'), help="path to 
 
 # Dict to hold final aggregated JSON obj
 aggregated_courses = {}
+
+# Regexs to identify courses and programs
+cRegex = re.compile('^[A-Z]{3}[0-9]{3}[HY][0-9]$')
+pRegex = re.compile('^AS(MAJ|SPE|MIN|FOC|CER)([0-9]{4}).?$')
 
 
 if __name__ == "__main__":
