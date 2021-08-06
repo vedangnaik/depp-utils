@@ -1,4 +1,6 @@
-# Ignore everything except for top level Python scripts and itself
+# Everything
 *
+# except
 !*.py
 !.gitignore
+!requirements.txt
