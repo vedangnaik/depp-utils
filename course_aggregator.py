@@ -8,9 +8,9 @@ from pathlib import Path
 from constants import allCoursesRe, allProgramsRe, prerequisiteRe
 
 # Set up argument parsing
-parser = argparse.ArgumentParser(description='Aggregates and cleans course JSON objects downloaded from https://degreeexplorer.utoronto.ca/.')
-parser.add_argument('--c_jsons_dir', type=str, help="path to directory to read downloaded course JSONs from. default: ./course_data", default="./course_data", metavar='dir')
-parser.add_argument('--c_aggr_file', type=argparse.FileType('w'), help="path to file to write aggregated courses into. default: ./aggregated_courses.json", default="./aggregated_courses.json", metavar='file')
+parser = argparse.ArgumentParser(description="Aggregates and cleans course JSON objects downloaded from https://degreeexplorer.utoronto.ca/.")
+parser.add_argument("--c_jsons_dir", type=str, help="path to directory to read downloaded course JSONs from. default: ./course_data", default="./course_data", metavar="dir")
+parser.add_argument("--c_aggr_file", type=argparse.FileType("w"), help="path to file to write aggregated courses into. default: ./aggregated_courses.json", default="./aggregated_courses.json", metavar="file")
 
 # Dict to hold final aggregated JSON obj
 aggregated_courses = {}
@@ -32,16 +32,16 @@ if __name__ == "__main__":
 
         # From the top level, remove everything except these two
         for key in list(courseObj.keys()):
-            if key not in ['title', 'prerequisites']:
+            if key not in ["title", "prerequisites"]:
                 del courseObj[key];
 
         # For each prerequisite, assemble the description and remove unwanted stuff. Assemble into a dict instead of a array, with the key being the shortIdentifer minus the brackets
         newPrereqs = {}
-        for prereqObj in courseObj['prerequisites']:
-            prereqID = prereqObj['shortIdentifier'][1:-1]
+        for prereqObj in courseObj["prerequisites"]:
+            prereqID = prereqObj["shortIdentifier"][1:-1]
 
             displayPrefix = prereqObj["displayPrefix"]
-            connector = prereqObj['subItemConnectorString']
+            connector = prereqObj["subItemConnectorString"]
             displaySuffix = prereqObj["displaySuffix"]
             # We need the actual codes to make the display string
             requisiteCodes = []
@@ -54,8 +54,8 @@ if __name__ == "__main__":
             programs = []
             categories = []
             dependentPrereqs = []
-            for i in range(len(prereqObj['requisiteItems'])):
-                code = prereqObj['requisiteItems'][i]["code"]
+            for i in range(len(prereqObj["requisiteItems"])):
+                code = prereqObj["requisiteItems"][i]["code"]
                 requisiteCodes.append(code)
                 if allCoursesRe.match(code):
                     courses.append(code)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             # Now, we proceed differently depending on what types and countTypes and other factors this prerequisite has. Reduction in final file size can be acheived by determining ahead of time which requisites are unverifiable, and reducing their content.
             # Array of prereq obj keys to keep. Can be modified as necessary to include the bare minimum needed, but these two are mandatory for all.
             keysToKeep = ["description", "type"]
-            # We will combine all of these subtypes into a single 'unverifiable' type to save space.
+            # We will combine all of these subtypes into a single "unverifiable" type to save space.
             if countType in ["AVERAGE", "YOS", "GPA", "GRADE"] or type_ == "COMPLEX":
                 prereqObj["type"] = "UNVERIFIABLE"
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
@@ -129,9 +129,6 @@ if __name__ == "__main__":
                     prereqObj["courses"] = courses
                     prereqObj["categories"] = categories
 
-                    if prereqObj["type"] == "FCES_LIST" and categories != []:
-                        print(courseFile)
-
                 # SUBJECT_POSTS family - only one relevant here
                 elif countType == "SUBJECT_POSTS" and type_ == "MINIMUM":
                     keysToKeep += ["count", "programs"]
@@ -153,17 +150,17 @@ if __name__ == "__main__":
                     del prereqObj[key]
 
             # Collapse multiple spaces in description
-            prereqObj["description"] = ' '.join(prereqObj["description"].split())
+            prereqObj["description"] = " ".join(prereqObj["description"].split())
 
             # Done, add it to the new dict
             newPrereqs[prereqID] = prereqObj
 
         # Now that we have finished modifying everything, we add the new prereqs to the courseObj and append this to the final file
-        courseObj['prerequisites'] = newPrereqs
+        courseObj["prerequisites"] = newPrereqs
         aggregated_courses[Path(courseFile).stem] = courseObj
 
     # We have finished modifying all the courses. Write aggregated_courses to file
-    json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, indent=2)
+    json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, separators=(',', ':'))
 
     # Print diagnostics
     print("Finished.")
