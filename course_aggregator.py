@@ -11,6 +11,7 @@ from constants import allCoursesRe, allProgramsRe, prerequisiteRe
 parser = argparse.ArgumentParser(description="Aggregates and cleans course JSON objects downloaded from https://degreeexplorer.utoronto.ca/.")
 parser.add_argument("--c_jsons_dir", type=str, help="path to directory to read downloaded course JSONs from. default: ./course_data", default="./course_data", metavar="dir")
 parser.add_argument("--c_aggr_file", type=argparse.FileType("w"), help="path to file to write aggregated courses into. default: ./aggregated_courses.json", default="./aggregated_courses.json", metavar="file")
+parser.add_argument("--debug", help="include to pretty-print JSON. Useful for debugging.", action="store_true")
 
 # Dict to hold final aggregated JSON obj
 aggregated_courses = {}
@@ -173,7 +174,10 @@ if __name__ == "__main__":
         aggregated_courses[Path(courseFile).stem] = courseObj
 
     # We have finished modifying all the courses. Write aggregated_courses to file
-    json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, indent=2)
+    if (args.debug):
+        json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, indent=2)
+    else:
+        json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, separators=(',', ':'))
 
     # Print diagnostics
     print("Finished.")
