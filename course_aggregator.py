@@ -102,6 +102,7 @@ if __name__ == "__main__":
                         prereqObj["type"] = "COURSES_GROUPMIN"
                         # Here, we are relying on the fact that the prereqs mentioned in this one come before it. This allows us to modify them right here vs. doing a second pass later.
                         for driverPrereqID in prerequisiteRe.findall(prereqObj["displaySuffix"]):
+                            newPrereqs[driverPrereqID]["type"] = newPrereqs[driverPrereqID]["type"].split("-")[0] + "-RECURS"
                             if ("dependentPrereqs" not in newPrereqs[driverPrereqID]):
                                 newPrereqs[driverPrereqID]["dependentPrereqs"] = [prereqID]
                             else:
@@ -128,6 +129,13 @@ if __name__ == "__main__":
                         keysToKeep += ["count"]
                     elif type_ == "GROUPMINIMUM":
                         prereqObj["type"] = "FCES_GROUPMIN"
+                        # As before, relying on the ordering
+                        for driverPrereqID in prerequisiteRe.findall(prereqObj["displaySuffix"]):
+                            newPrereqs[driverPrereqID]["type"] = newPrereqs[driverPrereqID]["type"].split("-")[0] + "-RECURS"
+                            if ("dependentPrereqs" not in newPrereqs[driverPrereqID]):
+                                newPrereqs[driverPrereqID]["dependentPrereqs"] = [prereqID]
+                            else:
+                                newPrereqs[driverPrereqID]["dependentPrereqs"].append(prereqID)
                         keysToKeep += ["count"]
                     
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
@@ -165,7 +173,7 @@ if __name__ == "__main__":
         aggregated_courses[Path(courseFile).stem] = courseObj
 
     # We have finished modifying all the courses. Write aggregated_courses to file
-    json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, separators=(',', ':'))
+    json.dump(aggregated_courses, args.c_aggr_file, ensure_ascii=False, indent=2)
 
     # Print diagnostics
     print("Finished.")
