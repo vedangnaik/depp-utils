@@ -100,6 +100,12 @@ if __name__ == "__main__":
                         prereqObj["type"] = "COURSES_LIST"
                     elif type_ == "GROUPMINIMUM":
                         prereqObj["type"] = "COURSES_GROUPMIN"
+                        # Here, we are relying on the fact that the prereqs mentioned in this one come before it. This allows us to modify them right here vs. doing a second pass later.
+                        for driverPrereqID in prerequisiteRe.findall(prereqObj["displaySuffix"]):
+                            if ("dependentPrereqs" not in newPrereqs[driverPrereqID]):
+                                newPrereqs[driverPrereqID]["dependentPrereqs"] = [prereqID]
+                            else:
+                                newPrereqs[driverPrereqID]["dependentPrereqs"].append(prereqID)
                         keysToKeep += ["count"]
 
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
@@ -140,7 +146,6 @@ if __name__ == "__main__":
 
                 # Whatever else
                 else:
-                    print(countType, type_)
                     listOfReqsStr = f" {connector} ".join(requisiteCodes)
                     prereqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 

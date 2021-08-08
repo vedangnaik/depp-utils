@@ -17,7 +17,7 @@ topLevelCategoryMap = [
     # * (GR) = any graduate level course
     (re.compile('^\* \(GR\)$'), lambda category: "[A-Z][A-Z][A-Z][0-9][0-9][0-9][0-9][HY]"),
     # CSC404H1 = specific undergraduate course code e.g. one of CSC404H1 or CSC236H1 or CSC324H1
-    (re.compile('^[A-Z][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$'), lambda category: "{0}".format(re.compile('^[A-Z][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$').match(category).group(0)))
+    (re.compile('^[A-W][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$'), lambda category: "{0}".format(re.compile('^[A-Z][A-Z][A-Z][A-Z0-9][0-9][0-9][HY][0-9]$').match(category).group(0)))
 ]
 
 def parseTopLevelCategory(category):
@@ -116,8 +116,7 @@ if __name__ == "__main__":
         }
 
     # We have finished modifying all the courses. Write aggregated_courses to file
-    print(aggregated_course_categories)
-    json.dump(aggregated_course_categories, args.cc_ids_file, ensure_ascii=False, indent=2)
+    json.dump(aggregated_course_categories, args.cc_ids_file, ensure_ascii=False, separators=(',', ':'))
 
     # Print diagnostics
     print("Finished.")
