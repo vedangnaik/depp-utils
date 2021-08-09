@@ -129,34 +129,14 @@ if __name__ == "__main__":
 
                 reqObj["description"] =  displayPrefix.strip()
 
-            # Unfortunately, both of these refer to requirements that are ahead of themselves. Thus, they cannot be 
-            elif type_ == "GROUPMINIMUM":
-                pass
-
-            elif type_ == "GROUPMAXIMUM":
-                pass
+            # Unfortunately, both of these refer to requirements that are ahead of themselves. Thus, they cannot be evaluated at this stage. A second loop is needed to do these.
+            elif type_ == "GROUPMINIMUM" or type_ == "GROUPMAXIMUM":
+                listOfReqsStr = f" {connector} ".join(requisiteCodes)
+                reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
             # There shouldn't be any others. This is just in case.
             else:
                 print(type_)
-
-            # GROUPMINIMUMs usually place further restrictions upon the courses from other requirements. The requirement itself specifies courses/categories in it, while referring back to other requirements upon which to act
-            # print(str(len(courses)).ljust(3),
-            #     str(len(categories)).ljust(3),
-            #     str(len(programs)).ljust(3),
-            #     str(len(dependentReqs)).ljust(3)
-            # )
-            # reqObj["type"] = ""
-            # if len(courses) != 0:
-            #     reqObj["type"] += "COURSES_"
-            # if len(categories) != 0:
-            #     reqObj["type"] += "CATEGORIES_"
-            # reqObj["type"] += "GROUPMIN"
-
-            # a = [int(code[3:]) for code in requirementRe.findall(displaySuffix)]
-            # # print(programFile, int(reqID[3:]), a)
-            # if int(reqID[3:]) < max(a):
-            #     print(programFile, reqID, a)
 
             # Remove unwanted keys
             for key in list(reqObj.keys()):
@@ -172,6 +152,26 @@ if __name__ == "__main__":
         # Now that we have finished modifying everything, we add the new prereqs to the courseObj and append this to the final file
         programObj["detailAssessments"] = newReqs
         aggregated_programs[Path(programFile).stem] = programObj
+
+    # This is the second pass, to clean up the GROUPMAXIMUMs and GROUPMINIMUMs
+    for progID in aggregated_programs:
+        allReqsDict = aggregated_programs[progID]["detailAssessments"]
+        for reqID in allReqsDict:
+            reqObj = allReqsDict[reqID]
+            
+            if reqObj["type"] == "GROUPMINIMUM":
+                for driverReqID in requirementRe.findall(reqObj["description"]):
+                    allReqsDict[driverReqID]["type"] = allReqsDict[driverReqID]["type"].split("-")[0] + "-RECURS"
+                    if "dependentReqs" in allReqsDict[driverReqID]:
+                        print(progID, reqID, driverReqID)
+            
+            elif reqObj["type"] == "GROUPMAXIMUM":
+                pass
+
+            # Just the other guys, they've already been handled.
+            else:
+                pass
+
 
     # We have finished modifying all the courses. Write aggregated_courses to file
     if (args.debug):
