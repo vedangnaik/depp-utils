@@ -4,6 +4,7 @@ import json
 import glob
 import argparse
 from pathlib import Path
+import re
 
 from constants import allCoursesRe, allProgramsRe, requirementRe
 
@@ -90,8 +91,10 @@ if __name__ == "__main__":
                 # There are no such requirements which have combinations of other requirements and courses/categories. Verified via explicit checking of all programs.
                 keysToKeep += ["count"]
                 if len(dependentReqs) != 0:
+                    # "count" needs to be manually parsed here since the information is missing from the originals
                     reqObj["type"] = "REQUIREMENTS_MIN"
                     reqObj["dependentReqs"] = dependentReqs
+                    reqObj["count"] = int(re.compile("At least ([0-9]{1,3}) Requirement").search(displayPrefix).group(1))
                     keysToKeep += ["dependentReqs"]
                 else:
                     # Some requirements have combinations of both, while some have only one. This method allows a specific requirement to be made for each type.
@@ -129,8 +132,21 @@ if __name__ == "__main__":
 
                 reqObj["description"] =  displayPrefix.strip()
 
-            # Unfortunately, both of these refer to requirements that are ahead of themselves. Thus, they cannot be evaluated at this stage. A second loop is needed to do these.
+            # GROUPMINIMUMs are like MINIMUMS but place restrictions upon the used courses of other requirements. Unfortunately, some of these refer to requirements that are ahead of this one. Thus, these are handled in a second loop.
             elif type_ == "GROUPMINIMUM" or type_ == "GROUPMAXIMUM":
+                keysToKeep += ["count"]
+                # There are no such requirements which have combinations of other requirements and courses/categories. Verified via explicit checking of all programs.
+                reqObj["type"] = ""
+                if len(courses) != 0: 
+                    reqObj["type"] = "COURSES_"
+                    reqObj["courses"] = courses
+                    keysToKeep += ["courses"]
+                if len(categories) != 0:
+                    reqObj["type"] = "CATEGORIES_"
+                    reqObj["categories"] = categories
+                    keysToKeep += ["categories"]
+                reqObj["type"] += "GROUPMIN" if type_ == "GROUPMINIMUM" else "GROUPMAX"
+
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
@@ -159,14 +175,13 @@ if __name__ == "__main__":
         for reqID in allReqsDict:
             reqObj = allReqsDict[reqID]
             
-            if reqObj["type"] == "GROUPMINIMUM":
+            if reqObj["type"].split("_")[-1] == "GROUPMIN" or reqObj["type"].split("_")[-1] == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
                     allReqsDict[driverReqID]["type"] = allReqsDict[driverReqID]["type"].split("-")[0] + "-RECURS"
-                    if "dependentReqs" in allReqsDict[driverReqID]:
-                        print(progID, reqID, driverReqID)
-            
-            elif reqObj["type"] == "GROUPMAXIMUM":
-                pass
+                    if "recursReqs" in allReqsDict[driverReqID]:
+                        allReqsDict[driverReqID]["recursReqs"].append(reqID)
+                    else:
+                        allReqsDict[driverReqID]["recursReqs"] = [reqID]
 
             # Just the other guys, they've already been handled.
             else:
