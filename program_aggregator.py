@@ -205,8 +205,11 @@ if __name__ == "__main__":
             # Isolate GROUPMIN and GROUPMAX
             if reqType == "GROUPMIN" or reqType == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
+                    if progID == "ASMAJ1023" and driverReqID == "Req8":
+                        print("here")
                     # This bit it to prevent multiple /RECURS being attached to reqs which are referenced by multiple other reqs.
-                    reqObj["type"] += "/RECURS" if len(reqObj["type"].split("/")) != 4 else ""
+                    driverReqType = allReqsDict[driverReqID]["type"]
+                    allReqsDict[driverReqID]["type"] += "/RECURS" if len(driverReqType.split("/")) != 4 else ""
                     if "recursReqs" in allReqsDict[driverReqID]:
                         allReqsDict[driverReqID]["recursReqs"].append(reqID)
                     else:
