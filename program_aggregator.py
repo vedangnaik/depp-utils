@@ -16,6 +16,7 @@ parser.add_argument("--debug", help="include to pretty-print JSON. Useful for de
 
 # Dict to hold final aggregated JSON obj
 aggregated_programs = {}
+a = []
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -88,31 +89,46 @@ if __name__ == "__main__":
 
             # MINIMUM requirements are split between recursive requirement ones and non-recursive courses/categories ones, even though this isn't specifically mentioned anywhere in the object.
             elif type_ == "MINIMUM":
-                # There are no such requirements which have combinations of other requirements and courses/categories. Verified via explicit checking of all programs.
-                keysToKeep += ["count"]
-                if len(dependentReqs) != 0:
-                    # "count" needs to be manually parsed here since the information is missing from the originals
-                    reqObj["type"] = "REQUIREMENTS_MIN"
-                    reqObj["dependentReqs"] = dependentReqs
-                    reqObj["count"] = int(re.compile("At least ([0-9]{1,3}) Requirement").search(displayPrefix).group(1))
-                    keysToKeep += ["dependentReqs"]
-                else:
-                    # Some requirements have combinations of both, while some have only one. This method allows a specific requirement to be made for each type.
-                    reqObj["type"] = ""
-                    if len(courses) != 0:
-                        reqObj["type"] += "COURSES_"
-                        reqObj["courses"] = courses
-                        keysToKeep += ["courses"]
-                    if len(categories) != 0:
-                        reqObj["type"] += "CATEGORIES_"
-                        reqObj["categories"] = categories
-                        keysToKeep += ["categories"]
-                    reqObj["type"] += "MIN"
-                    # Neither of them being present shouldn't happen, otherwise this requirement has no point.
-                # TODO: Some have dependentReqs. Figure out how that works
-
+                # Standard desc.
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
+
+                # Remove minimum grade ones, don't ask why the hell they're in here.
+                if "Grade" in displayPrefix:
+                    reqObj["type"] = "UNVERIFIABLE"
+                else:
+                    match = re.compile("At least ([0-9]*.*[0-9]*) (Course|Credit|Requirement)").search(displayPrefix)
+                    if match:
+                        # Used to easily select the right type (vs. if-else).
+                        constraintTypes = {
+                            "Course": "NUM",
+                            "Credit": "FCES",
+                            "Requirement": "REQS"
+                        }
+                        # Used to assemble the final new type more easily.
+                        requisiteTypes = ""
+                        # Recreate the count from the prefix; it is missing for both requirements and courses. Yeah, don't ask why.
+                        reqObj["count"] = match.group(1)
+                        keysToKeep += ["count"]
+                        # FYI: Requirements and courses/categories are exclusive.
+                        if len(dependentReqs) != 0 and match.group(2) == "Requirement":
+                            requisiteTypes += "REQUIREMENTS_"
+                            reqObj["dependentReqs"] = dependentReqs
+                            keysToKeep += ["dependentReqs"]
+                        if len(courses) != 0:
+                            requisiteTypes += "COURSES_"
+                            reqObj["courses"] = courses
+                            keysToKeep += ["courses"]
+                        if len(categories) != 0:
+                            requisiteTypes += "CATEGORIES_"
+                            reqObj["categories"] = categories
+                            keysToKeep += ["categories"]
+                        reqObj["type"] = f"{requisiteTypes[:-1]}/{constraintTypes[match.group(2)]}/MIN"
+                    
+                    # Shouldn't happen, just in case.
+                    else:
+                        print(f"{type_}: Unknown prefix '{displayPrefix}' in {programFile}, {reqID}")
+                        reqObj["type"] = "UNVERIFIABLE"
 
             # LIST means every single item mentioned must be present
             elif type_ == "LIST":
@@ -134,18 +150,27 @@ if __name__ == "__main__":
 
             # GROUPMINIMUMs are like MINIMUMS but place restrictions upon the used courses of other requirements. Unfortunately, some of these refer to requirements that are ahead of this one. Thus, these are handled in a second loop.
             elif type_ == "GROUPMINIMUM" or type_ == "GROUPMAXIMUM":
-                keysToKeep += ["count"]
-                # There are no such requirements which have combinations of other requirements and courses/categories. Verified via explicit checking of all programs.
-                reqObj["type"] = ""
-                if len(courses) != 0: 
-                    reqObj["type"] = "COURSES_"
-                    reqObj["courses"] = courses
-                    keysToKeep += ["courses"]
-                if len(categories) != 0:
-                    reqObj["type"] = "CATEGORIES_"
-                    reqObj["categories"] = categories
-                    keysToKeep += ["categories"]
-                reqObj["type"] += "GROUPMIN" if type_ == "GROUPMINIMUM" else "GROUPMAX"
+                # There are no such requirements which recursively combine requirements with others. Only courses/categories have been seen so far. Verified via explicit checking of all programs.
+                match = re.compile("(At least|No more than) ([0-9]*.*[0-9]*) (Course|Credit)").search(displayPrefix)
+                if match:
+                    keysToKeep += ["count"]
+                    reqObj["type"] = ""
+                    if len(courses) != 0: 
+                        reqObj["type"] += "COURSES_"
+                        reqObj["courses"] = courses
+                        keysToKeep += ["courses"]
+                    if len(categories) != 0:
+                        reqObj["type"] += "CATEGORIES_"
+                        reqObj["categories"] = categories
+                        keysToKeep += ["categories"]
+                    # Depending on whether it's credits or courses, fix the type. For courses, the 'count' key does not report accurate information (as usual), so recreate that too (although here we're just doing it for all *shrug*).
+                    reqObj["count"] = float(match.group(2))
+                    reqObj["type"] += f"{'NUM' if match.group(3) == 'Course' else 'FCES'}_{type_[:8]}"
+
+                # ATM, these don't exist. Just in case.
+                else:
+                    print(f"{type_}: Unknown prefix '{displayPrefix}' in {programFile}, {reqID}")
+                    reqObj["type"] = "UNVERIFIABLE"
 
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
@@ -169,7 +194,7 @@ if __name__ == "__main__":
         programObj["detailAssessments"] = newReqs
         aggregated_programs[Path(programFile).stem] = programObj
 
-    # This is the second pass, to clean up the GROUPMAXIMUMs and GROUPMINIMUMs
+    # This is the second pass, to link the GROUPMAXIMUMs and GROUPMINIMUMs with the requirements they tie back to.
     for progID in aggregated_programs:
         allReqsDict = aggregated_programs[progID]["detailAssessments"]
         for reqID in allReqsDict:
@@ -177,7 +202,7 @@ if __name__ == "__main__":
             
             if reqObj["type"].split("_")[-1] == "GROUPMIN" or reqObj["type"].split("_")[-1] == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
-                    allReqsDict[driverReqID]["type"] = allReqsDict[driverReqID]["type"].split("-")[0] + "-RECURS"
+                    allReqsDict[driverReqID]["type"] = allReqsDict[driverReqID]["type"].split("|")[0] + "|RECURS"
                     if "recursReqs" in allReqsDict[driverReqID]:
                         allReqsDict[driverReqID]["recursReqs"].append(reqID)
                     else:
@@ -197,5 +222,6 @@ if __name__ == "__main__":
     # Print diagnostics
     print("Finished.")
     print(f"Cleaned and aggregate {attempted} course(s) from {args.p_jsons_dir}")
+    print(set(a))
 
     args.p_aggr_file.close()
