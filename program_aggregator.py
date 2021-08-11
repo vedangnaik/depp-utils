@@ -74,28 +74,28 @@ if __name__ == "__main__":
             keysToKeep = ["description", "type"]
             # REUSE doesn't really affect anything, since even if courses are not reused, it doesn't matter. Hence, we simply return COMPLETE for this.
             if type_ == "REUSE":
-                reqObj["type"] = "COMPLETE"
+                reqObj["type"] = "COMPLETE/./."
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
             # COMPLEX types are usually not verifiable.
             elif type_ == "COMPLEX":
-                reqObj["type"] = "UNVERIFIABLE"
+                reqObj["type"] = "UNVERIFIABLE/./."
                 reqObj["description"] = displayPrefix.strip()
 
             # NOTE objects need nothing more than the description
             elif type_ == "NOTE":
+                reqObj["type"] = "NOTE/./."
                 reqObj["description"] = displayPrefix.strip()
 
             # MINIMUM requirements are split between recursive requirement ones and non-recursive courses/categories ones, even though this isn't specifically mentioned anywhere in the object.
             elif type_ == "MINIMUM":
-                # Standard desc.
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
                 # Remove minimum grade ones, don't ask why the hell they're in here.
                 if "Grade" in displayPrefix:
-                    reqObj["type"] = "UNVERIFIABLE"
+                    reqObj["type"] = "UNVERIFIABLE/./."
                 else:
                     match = re.compile("At least ([0-9]*.*[0-9]*) (Course|Credit|Requirement)").search(displayPrefix)
                     if match:
@@ -130,50 +130,51 @@ if __name__ == "__main__":
                         print(f"{type_}: Unknown prefix '{displayPrefix}' in {programFile}, {reqID}")
                         reqObj["type"] = "UNVERIFIABLE"
 
-            # LIST means every single item mentioned must be present
+            # LIST means every single item mentioned must be present. Only courses are present in list requirements. Verified via explicit checking of all programs. 
             elif type_ == "LIST":
-                # Only courses are present in list requirements. Verified via explicit checking of all programs.
-                reqObj["type"] = "COURSES_LIST"
+                listOfReqsStr = f" {connector} ".join(requisiteCodes)
+                reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
+                # Straight away hardcode to the new type.
+                reqObj["type"] = "COURSES/NUM/LIST"
                 reqObj["courses"] = courses
                 keysToKeep += ["courses"]
 
-                listOfReqsStr = f" {connector} ".join(requisiteCodes)
-                reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
-
             # NO_REUSE prohibits the sharing of courses across the listed requirements. Only other requirements are present. Verified via explicit checking of all programs.
             elif type_ == "NO_REUSE":
-                reqObj["type"] = "REQUIREMENTS_NO_REUSE"
+                reqObj["description"] =  displayPrefix.strip()
+                # Hardcode the new type.
+                reqObj["type"] = "REQUIREMENTS/NUM/NO_REUSE"
                 reqObj["dependentReqs"] = dependentReqs
                 keysToKeep += ["dependentReqs"]
 
-                reqObj["description"] =  displayPrefix.strip()
-
             # GROUPMINIMUMs are like MINIMUMS but place restrictions upon the used courses of other requirements. Unfortunately, some of these refer to requirements that are ahead of this one. Thus, these are handled in a second loop.
             elif type_ == "GROUPMINIMUM" or type_ == "GROUPMAXIMUM":
+                listOfReqsStr = f" {connector} ".join(requisiteCodes)
+                reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
                 # There are no such requirements which recursively combine requirements with others. Only courses/categories have been seen so far. Verified via explicit checking of all programs.
                 match = re.compile("(At least|No more than) ([0-9]*.*[0-9]*) (Course|Credit)").search(displayPrefix)
                 if match:
+                    # Recreate the count. Some of them have it correctly, but eh.
+                    reqObj["count"] = float(match.group(2))
                     keysToKeep += ["count"]
-                    reqObj["type"] = ""
+                    # string for new type
+                    requisiteTypes = ""
+
                     if len(courses) != 0: 
-                        reqObj["type"] += "COURSES_"
+                        requisiteTypes += "COURSES_"
                         reqObj["courses"] = courses
                         keysToKeep += ["courses"]
                     if len(categories) != 0:
-                        reqObj["type"] += "CATEGORIES_"
+                        requisiteTypes += "CATEGORIES_"
                         reqObj["categories"] = categories
                         keysToKeep += ["categories"]
                     # Depending on whether it's credits or courses, fix the type. For courses, the 'count' key does not report accurate information (as usual), so recreate that too (although here we're just doing it for all *shrug*).
-                    reqObj["count"] = float(match.group(2))
-                    reqObj["type"] += f"{'NUM' if match.group(3) == 'Course' else 'FCES'}_{type_[:8]}"
+                    reqObj["type"] = f"{requisiteTypes[:-1]}/{'NUM' if match.group(3) == 'Course' else 'FCES'}/{type_[:8]}"
 
                 # ATM, these don't exist. Just in case.
                 else:
                     print(f"{type_}: Unknown prefix '{displayPrefix}' in {programFile}, {reqID}")
                     reqObj["type"] = "UNVERIFIABLE"
-
-                listOfReqsStr = f" {connector} ".join(requisiteCodes)
-                reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
             # There shouldn't be any others. This is just in case.
             else:
@@ -199,10 +200,13 @@ if __name__ == "__main__":
         allReqsDict = aggregated_programs[progID]["detailAssessments"]
         for reqID in allReqsDict:
             reqObj = allReqsDict[reqID]
+            reqType = reqObj["type"].split("/")[2]
             
-            if reqObj["type"].split("_")[-1] == "GROUPMIN" or reqObj["type"].split("_")[-1] == "GROUPMAX":
+            # Isolate GROUPMIN and GROUPMAX
+            if reqType == "GROUPMIN" or reqType == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
-                    allReqsDict[driverReqID]["type"] = allReqsDict[driverReqID]["type"].split("|")[0] + "|RECURS"
+                    # This bit it to prevent multiple /RECURS being attached to reqs which are referenced by multiple other reqs.
+                    reqObj["type"] += "/RECURS" if len(reqObj["type"].split("/")) != 4 else ""
                     if "recursReqs" in allReqsDict[driverReqID]:
                         allReqsDict[driverReqID]["recursReqs"].append(reqID)
                     else:
@@ -211,7 +215,6 @@ if __name__ == "__main__":
             # Just the other guys, they've already been handled.
             else:
                 pass
-
 
     # We have finished modifying all the courses. Write aggregated_courses to file
     if (args.debug):
