@@ -74,7 +74,7 @@ if __name__ == "__main__":
             keysToKeep = ["description", "type"]
             # REUSE doesn't really affect anything, since even if courses are not reused, it doesn't matter. Hence, we simply return COMPLETE for this.
             if type_ == "REUSE":
-                reqObj["type"] = "COMPLETE/./."
+                reqObj["type"] = "NOTE/./."
                 listOfReqsStr = f" {connector} ".join(requisiteCodes)
                 reqObj["description"] = f"{displayPrefix} {listOfReqsStr} {displaySuffix}".strip()
 
@@ -205,8 +205,6 @@ if __name__ == "__main__":
             # Isolate GROUPMIN and GROUPMAX
             if reqType == "GROUPMIN" or reqType == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
-                    if progID == "ASMAJ1023" and driverReqID == "Req8":
-                        print("here")
                     # This bit it to prevent multiple /RECURS being attached to reqs which are referenced by multiple other reqs.
                     driverReqType = allReqsDict[driverReqID]["type"]
                     allReqsDict[driverReqID]["type"] += "/RECURS" if len(driverReqType.split("/")) != 4 else ""
