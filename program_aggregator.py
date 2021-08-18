@@ -201,8 +201,7 @@ if __name__ == "__main__":
         for reqID in allReqsDict:
             reqObj = allReqsDict[reqID]
             reqType = reqObj["type"].split("/")[2]
-            
-            # Isolate GROUPMIN and GROUPMAX
+
             if reqType == "GROUPMIN" or reqType == "GROUPMAX":
                 for driverReqID in requirementRe.findall(reqObj["description"]):
                     # This bit it to prevent multiple /RECURS being attached to reqs which are referenced by multiple other reqs.
@@ -213,9 +212,14 @@ if __name__ == "__main__":
                     else:
                         allReqsDict[driverReqID]["recursReqs"] = [reqID]
 
-            # Just the other guys, they've already been handled.
-            else:
-                pass
+    # This is the third pass, to amend the descriptions of those requirements which got /RECURS attached to them during the previous pass. This is to make their status easier to understand.
+    for progID in aggregated_programs:
+        allReqsDict = aggregated_programs[progID]["detailAssessments"]
+        for reqID in allReqsDict:
+            reqObj = allReqsDict[reqID]
+
+            if "/RECURS" in reqObj["type"]:
+                reqObj["description"] += f" under constraint from {' and '.join(reqObj['recursReqs'])}"
 
     # We have finished modifying all the courses. Write aggregated_courses to file
     if (args.debug):
