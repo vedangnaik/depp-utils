@@ -55,20 +55,21 @@ parser.add_argument('--p_jsons_dir', type=str, help="path to directory to store 
 parser.add_argument('--p_cc_ids_file', type=argparse.FileType('a'), help="path to ASCII file to store course categories from downloaded program JSONs. default: ./program-course-category-ids.txt", default="./program-course-category-ids.txt", metavar='file')
 
 
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Starting program download...")
 
-    # If a directory is indicated, created it if it doesn't exist
+    # If a directory is indicated, create it if it doesn't exist.
     if args.p_jsons_dir:
         Path(args.p_jsons_dir).mkdir(exist_ok=True, parents=True)
 
-    # Load the cookies into the headers
+    # Load the cookies into the headers.
     addProgramPOSTHeader["Cookie"] = args.cookie
     resetProgramsPOSTHeader["Cookie"] = args.cookie
 
-    # Status vars
+    # Status vars.
     attempted = 0
     successes = 0
     skipped = []
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     # The current study area being downloaded. Some focuses in DE have strict dependencies on the specialist/major already being present. This ensures that we always try downloading focuses after the dependency is added.
     currentStudyArea = None
 
-    # Loop through every course from stdin
+    # Loop through every program from stdin.
     for line in sys.stdin:
         programID = line.strip()
         studyAreaNum = allProgramsRe.match(programID).group(2)
@@ -125,15 +126,15 @@ if __name__ == "__main__":
         print("Succeeded")
         successes += 1
 
-    # Reset the courses to clean up
+    # Reset the courses to clean up.
     r = requests.post("https://degreeexplorer.utoronto.ca/degreeExplorer/rest/dxPlanner/resetPrograms?tabIndex=0", headers=resetProgramsPOSTHeader)
 
-    # Print diagnostics
+    # Print status information and exit.
     print("Finished.")
     print(f"Attempted to download {attempted} program(s) from Degree Explorer:")
     print(f"\tSucceeded in downloading {successes} program(s)")
     print(f"\tSkipped {len(skipped)} program(s) because they have already been scraped. Skipped: {skipped}")
     print(f"\tFailed to download {len(failures)} program(s). Failed: {failures}")
 
-    # Close stuff
+    # Close stuff.
     args.p_cc_ids_file.close()

@@ -82,20 +82,20 @@ def recursiveCourseCategoryDownload(categoryID):
     return (successes, skipped, failures)
 
 
-# Start main
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Starting course category download...")
 
-    # If a directory is indicated, created it if it doesn't exist
+    # If a directory is indicated, create it if it doesn't exist.
     if args.cc_jsons_dir:
         Path(args.cc_jsons_dir).mkdir(exist_ok=True, parents=True)
 
-    # Load the cookies into the headers
+    # Load the cookies into the headers.
     getCategoryCourseGETHeader["Cookie"] = args.cookie
 
-    # Status vars for the program
+    # Status vars for the program.
     attempted = 0
     successes = 0
     skipped = []
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
         print(f"{courseCategory} - Successes:{sucs}, Skips:{len(skips)}, Fails:{len(fails)}")
 
-    # Status info
+    # Print status information and exit.
     print("Finished.")
     print(f"Attempted to parse {attempted} course categories from stdin:")
     print(f"\tSucceeded in parsing {successes} categories, both from stdin and their unlisted dependent categories")

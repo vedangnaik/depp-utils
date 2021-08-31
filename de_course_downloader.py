@@ -55,20 +55,22 @@ parser.add_argument('col_num', type=int, help="col num of DE timetable into whic
 parser.add_argument('--c_jsons_dir', type=str, help="path to directory to store downloaded course JSONs. default: ./course_data", default="./course_data", metavar='dir')
 parser.add_argument('--c_cc_ids_file', type=argparse.FileType('a'), help="path to ASCII file to store course categories from downloaded course JSONs. default: ./courses-course-category-ids.txt", default="./courses-course-category-ids.txt", metavar='file')
 
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Starting course download...")
 
-    # If a directory is indicated, created it if it doesn't exist
+    # If a directory is indicated, create it if it doesn't exist.
     if args.c_jsons_dir:
         Path(args.c_jsons_dir).mkdir(exist_ok=True, parents=True)
 
-    # Load the cookies into the headers
+    # Load the cookies into the headers.
     addCoursePOSTHeader["Cookie"] = args.cookie
     getCourseInfoGETHeader["Cookie"] = args.cookie
 
-    # Status vars
+    # Status vars.
     attempted = 0
     successes = 0
     skipped = []
@@ -76,6 +78,7 @@ if __name__ == "__main__":
     # Used to keep track of how many have failed in a row. If it's more than a threshold, the cookie has likely become invalid. Auto-quit at that point to stop hammering the server.
     consecutive_failures = 0
 
+    # Loop through all courses.
     for line in sys.stdin:
         if consecutive_failures >= 20:
             print(f"Detected {consecutive_failures} consecutive failures. This is likely because the cookie has become invalid. Quitting now to avoid unnecessary API calls.")
@@ -86,7 +89,7 @@ if __name__ == "__main__":
 
         print(f"{courseID} - Status: ", end="")
 
-        # Skip the course if we've already scraped it
+        # Skip the course if we've already scraped it.
         f = Path(f"{args.c_jsons_dir}/{courseID}.json")
         if f.is_file():
             skipped.append(courseID)
@@ -122,10 +125,10 @@ if __name__ == "__main__":
                         args.c_cc_ids_file.write(code + "\n")
 
         print("Succeeded")
-        consecutive_failures = 0 # Reset this
+        consecutive_failures = 0 # Reset this.
         successes += 1
 
-    # Print diagnostics
+    # Print status information and exit.
     print("Finished.")
     print(f"Attempted to download {attempted} course(s) from Degree Explorer:")
     print(f"\tSucceeded in downloading {successes} course(s)")
